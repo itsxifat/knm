@@ -29,7 +29,7 @@ const manrope = Manrope({
 });
 
 export const metadata = {
-  title: 'KNM | Heritage Panjabi',
+  title: 'K&M Lifestyle',
   description: 'Refined elegance for the modern gentleman.',
 };
 
