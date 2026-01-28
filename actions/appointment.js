@@ -90,7 +90,7 @@ const generateUserEmail = (name, store, subject) => {
                 
                 <p style="margin:0;font-family:'Manrope', sans-serif;font-size:10px;color:#666666;line-height:20px;">
                   © 2025 OURA. 128 Gulshan Avenue, Dhaka.<br>
-                  Heritage craftsmanship for the modern era.
+                  Lifestyle craftsmanship for the modern era.
                 </p>
               </td>
             </tr>

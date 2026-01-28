@@ -4,7 +4,7 @@ import { CartProvider } from '@/lib/context/CartContext';
 import SessionProvider from '@/components/SessionProvider';
 import FooterWrapper from '@/components/FooterWrapper';
 import { Toaster } from 'react-hot-toast';
-// Marcellus is "refined and charming," perfect for heritage headings.
+// Marcellus is "refined and charming," perfect for Lifestyle headings.
 // Tenor Sans is designed for body text and headlines in fashion.
 import { Marcellus, Tenor_Sans, Manrope } from 'next/font/google';
 

@@ -33,7 +33,7 @@ export async function generateMetadata({ params }) {
   if (!product) return { title: 'Product Not Found | KNM' };
 
   return {
-    title: `${product.name} | KNM Heritage`,
+    title: `${product.name} | KNM Lifestyle`,
     description: product.description?.substring(0, 160),
     openGraph: { images: product.images?.[0] ? [{ url: product.images[0] }] : [] },
   };

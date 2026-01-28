@@ -168,7 +168,7 @@ export default function Footer() {
              
              {/* Copyright */}
              <div className="flex items-center gap-6 text-[10px] font-bold text-white/30 uppercase tracking-[0.2em]">
-                 <p>&copy; {currentYear} KNM Heritage.</p>
+                 <p>&copy; {currentYear} KNM Lifestyle.</p>
                  <span className="text-[#C5A059]/40">|</span>
                  <p>Site by <span className="text-[#C5A059] hover:text-white transition-colors cursor-pointer">Enfinito</span></p>
              </div>

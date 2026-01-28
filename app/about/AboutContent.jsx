@@ -20,7 +20,7 @@ export default function AboutContent() {
         <Image 
           // Using a high-end, abstract fashion/texture image
           src="https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=2670&auto=format&fit=crop"
-          alt="KNM Heritage"
+          alt="KNM Lifestyle"
           fill
           className="object-cover object-center"
           priority

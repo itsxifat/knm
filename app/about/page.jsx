@@ -2,7 +2,7 @@ import React from 'react';
 import AboutContent from './AboutContent';
 
 export const metadata = {
-  title: 'About Us | KNM Heritage',
+  title: 'About Us | KNM Lifestyle',
   description: 'The story of K&M, the High-End Retailer.',
 };
 

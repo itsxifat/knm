@@ -365,9 +365,9 @@ const Navbar = ({ navData }) => {
               </button>
 
               <div className="hidden lg:flex items-center gap-4 text-[#57534E]">
-                 <a href="https://facebook.com" className="hover:text-[#C5A059] transition-colors"><Facebook size={18} strokeWidth={1} /></a>
-                 <a href="https://instagram.com" className="hover:text-[#C5A059] transition-colors"><Instagram size={18} strokeWidth={1} /></a>
-                 <a href="https://whatsapp.com" className="hover:text-[#C5A059] transition-colors"><WhatsAppIcon size={18} /></a>
+                 <a href="https://www.facebook.com/knm.bangladesh" target='blank' className="hover:text-[#C5A059] transition-colors"><Facebook size={18} strokeWidth={1} /></a>
+                 <a href="https://www.instagram.com/knm.bangladesh" target='blank' className="hover:text-[#C5A059] transition-colors"><Instagram size={18} strokeWidth={1} /></a>
+                 <a href="https://wa.me/8801711751172" target='blank' className="hover:text-[#C5A059] transition-colors"><WhatsAppIcon size={18} /></a>
               </div>
 
               <div className="hidden lg:block w-px h-5 bg-[#C5A059]/30"></div>

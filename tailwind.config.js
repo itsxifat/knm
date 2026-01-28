@@ -13,7 +13,7 @@ module.exports = {
         heading: ['var(--font-cinzel)', 'serif'],    // For Titles (Royal feel)
       },
       colors: {
-        // KNM Heritage Palette
+        // KNM Lifestyle Palette
         primary: {
           DEFAULT: "#0F2F24", // Deep Emerald Green (The new Black)
           foreground: "#F9F7F2", // Cream text

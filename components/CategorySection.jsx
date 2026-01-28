@@ -17,7 +17,7 @@ export default async function CategorySection() {
         {/* --- HEADER --- */}
         <div className="text-center max-w-3xl mx-auto mb-12 md:mb-16 2xl:mb-20">
             <h2 className="font-heading font-normal text-4xl md:text-5xl 2xl:text-6xl text-[#121212] mb-6 uppercase tracking-tight leading-tight">
-               Our Heritage Collections
+               Our Lifestyle Collections
             </h2>
             <div className="w-16 h-[2px] bg-[#C5A059] mx-auto mb-6"></div>
             <p className="font-body text-xs md:text-sm text-[#57534E] uppercase tracking-[0.25em] font-medium leading-relaxed">
