@@ -1,12 +1,7 @@
 import Navbar from '@/components/Navbar';
 import SiteContent from '@/models/SiteContent';
-import mongoose from 'mongoose';
-import { Mail, Phone, MapPin, Clock } from 'lucide-react';
-
-const connectDB = async () => {
-  if (mongoose.connections[0].readyState) return;
-  await mongoose.connect(process.env.MONGODB_URI);
-};
+import connectDB from '@/lib/db'; // ✅ Use shared connection
+import { Mail, Phone, MapPin } from 'lucide-react';
 
 export const metadata = {
   title: 'Contact Us | KNM',
@@ -14,9 +9,10 @@ export const metadata = {
 };
 
 export default async function ContactPage() {
-  await connectDB();
+  await connectDB(); // ✅ Uses the cached connection with buffering enabled
   
   const siteContent = await SiteContent.findOne({ identifier: 'main_layout' }).lean();
+  
   const navData = {
     logoImage: "/logo.png",
     logoText: "KNM",
