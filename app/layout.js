@@ -1,15 +1,13 @@
 import './globals.css';
-import Navbar from '@/components/Navbar';
 import { CartProvider } from '@/lib/context/CartContext';
 import SessionProvider from '@/components/SessionProvider';
 import FooterWrapper from '@/components/FooterWrapper';
 import { Toaster } from 'react-hot-toast';
-// Marcellus is "refined and charming," perfect for Lifestyle headings.
-// Tenor Sans is designed for body text and headlines in fashion.
 import { Marcellus, Tenor_Sans, Manrope } from 'next/font/google';
+import Script from 'next/script'; 
 
 const marcellus = Marcellus({
-  weight: '400', // Marcellus only comes in 400, which is perfect for that clean look
+  weight: '400',
   subsets: ['latin'],
   variable: '--font-marcellus',
   display: 'swap',
@@ -34,9 +32,41 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
+  // Retrieve critical info from .env
+  const gtmId = process.env.NEXT_PUBLIC_GTM_ID;
+  const gtmServerUrl = process.env.NEXT_PUBLIC_GTM_SERVER_URL;
+
   return (
     <html lang="en" className={`${marcellus.variable} ${tenor.variable} ${manrope.variable}`}>
       <body className="antialiased bg-background text-foreground overflow-x-hidden">
+        
+        {/* Google Tag Manager - Server Side Load */}
+        {gtmId && gtmServerUrl && (
+          <>
+            <Script
+              id="gtm-script"
+              strategy="afterInteractive"
+              dangerouslySetInnerHTML={{
+                __html: `
+                  (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+                  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+                  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+                  '${gtmServerUrl}/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+                  })(window,document,'script','dataLayer','${gtmId}');
+                `,
+              }}
+            />
+            <noscript>
+              <iframe 
+                src={`${gtmServerUrl}/ns.html?id=${gtmId}`}
+                height="0" 
+                width="0" 
+                style={{ display: 'none', visibility: 'hidden' }}
+              />
+            </noscript>
+          </>
+        )}
+
         <SessionProvider>
           <CartProvider>
             <Toaster position="top-right" reverseOrder={false} />
