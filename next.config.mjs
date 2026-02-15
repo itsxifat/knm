@@ -13,8 +13,17 @@ const nextConfig = {
     // Disable Next.js image optimizer completely
     unoptimized: true,
 
-    // Allow loading from same domain & local dev
-    domains: ['oura-lifestyle.com', 'localhost'],
+    // Replaced 'domains' with 'remotePatterns' to fix deprecation warning
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'knm.bd' ,
+      },
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+      },
+    ],
   },
 
   // Important: prevent static output caching

@@ -1,7 +1,9 @@
 import './globals.css';
+import 'lenis/dist/lenis.css'; // ✅ Import Lenis CSS
 import { CartProvider } from '@/lib/context/CartContext';
 import SessionProvider from '@/components/SessionProvider';
 import FooterWrapper from '@/components/FooterWrapper';
+import SmoothScrolling from '@/components/SmoothScrolling'; // ✅ Import Wrapper
 import { Toaster } from 'react-hot-toast';
 import { Marcellus, Tenor_Sans, Manrope } from 'next/font/google';
 import Script from 'next/script'; 
@@ -32,7 +34,6 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
-  // Retrieve critical info from .env
   const gtmId = process.env.NEXT_PUBLIC_GTM_ID;
   const gtmServerUrl = process.env.NEXT_PUBLIC_GTM_SERVER_URL;
 
@@ -40,7 +41,7 @@ export default function RootLayout({ children }) {
     <html lang="en" className={`${marcellus.variable} ${tenor.variable} ${manrope.variable}`}>
       <body className="antialiased bg-background text-foreground overflow-x-hidden">
         
-        {/* Google Tag Manager - Server Side Load */}
+        {/* Google Tag Manager */}
         {gtmId && gtmServerUrl && (
           <>
             <Script
@@ -69,11 +70,14 @@ export default function RootLayout({ children }) {
 
         <SessionProvider>
           <CartProvider>
-            <Toaster position="top-right" reverseOrder={false} />
-            <main className="min-h-screen font-body selection:bg-accent selection:text-white">
-              {children}
-            </main>
-            <FooterWrapper />
+            {/* ✅ Wrap App in SmoothScrolling */}
+            <SmoothScrolling>
+              <Toaster position="top-right" reverseOrder={false} />
+              <main className="min-h-screen font-body selection:bg-accent selection:text-white">
+                {children}
+              </main>
+              <FooterWrapper />
+            </SmoothScrolling>
           </CartProvider>
         </SessionProvider>
       </body>

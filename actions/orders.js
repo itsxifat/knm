@@ -12,8 +12,48 @@ import Tag from '@/models/Tag';
 import { getServerSession } from "next-auth";
 import { authOptions } from '@/lib/auth'; 
 import { revalidatePath } from 'next/cache';
+import crypto from 'crypto'; // ✅ Added for SHA256 Hashing
 
 const serialize = (obj) => JSON.parse(JSON.stringify(obj));
+
+// --- HELPER: SHA256 HASHING ---
+function sha256(value) {
+  if (!value) return '';
+  return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+// --- HELPER: SEND GTM EVENT ---
+async function sendGTMServerEvent(order) {
+  try {
+    const payload = {
+      "event_name": "purchase",
+      "event_id": order.orderId, // ✅ Exact Order ID for Deduplication
+      "user_data": {
+        "em": sha256(order.guestInfo?.email?.trim().toLowerCase()), // ✅ Normalized & Hashed
+        "ph": sha256(order.guestInfo?.phone?.trim()) // ✅ Normalized & Hashed
+      },
+      "custom_data": {
+        "currency": "BDT", // Changed to BDT based on your UI, change to "USD" if strictly needed
+        "value": parseFloat(order.totalAmount),
+        "transaction_id": order.orderId
+      }
+    };
+
+    console.log(`[GTM] Sending Purchase Event for ${order.orderId}...`);
+
+    const res = await fetch('https://gtm.knm.bd/mp/collect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) console.error(`[GTM] Failed: ${res.statusText}`);
+    else console.log(`[GTM] Success: Event sent for ${order.orderId}`);
+
+  } catch (error) {
+    console.error("[GTM] Error sending event:", error);
+  }
+}
 
 // =========================================
 //  ADDRESS ACTIONS
@@ -110,10 +150,9 @@ export async function deleteCoupon(id) {
 }
 
 // =========================================
-//  REVIEW ACTIONS (Correct Logic Here)
+//  REVIEW ACTIONS
 // =========================================
 
-// Helper: Resolve Real Product ID (Handles Order Item ID mismatch)
 async function findProductRobust(productId, orderId) {
   let product = await Product.findById(productId);
   if (product) return product;
@@ -140,7 +179,6 @@ export async function getOrderReview({ productId, orderId }) {
     const product = await findProductRobust(productId, orderId);
     if (!product) return { found: false };
 
-    // Find review linked to this specific Order ID
     const review = product.reviews?.find(r => r.orderId && r.orderId.toString() === orderId.toString());
     
     if (review) {
@@ -170,11 +208,9 @@ export async function submitReview({ productId, rating, comment, orderId }) {
 
     const reviewerName = order.guestInfo ? `${order.guestInfo.firstName} ${order.guestInfo.lastName}` : 'Verified Customer';
 
-    // Find existing review by Order ID
     const existingReviewIndex = product.reviews.findIndex(r => r.orderId && r.orderId.toString() === orderId.toString());
 
     if (existingReviewIndex >= 0) {
-        // Edit Mode
         const existingReview = product.reviews[existingReviewIndex];
         if ((existingReview.editCount || 0) >= 3) {
             return { success: false, error: "Maximum edit limit (3) reached." };
@@ -184,7 +220,6 @@ export async function submitReview({ productId, rating, comment, orderId }) {
         product.reviews[existingReviewIndex].editCount = (existingReview.editCount || 0) + 1;
         product.reviews[existingReviewIndex].updatedAt = new Date();
     } else {
-        // Create Mode
         const isDup = product.reviews.find(r => r.orderId?.toString() === orderId.toString());
         if(isDup) return { success: false, error: "Review already exists." };
 
@@ -232,20 +267,16 @@ export async function getUserOrders() {
   const orders = await Order.find({ user: userId }).sort({ createdAt: -1 }).lean();
   if (!orders || orders.length === 0) return [];
 
-  // Fetch products to check for reviews
   const productIds = orders.flatMap(o => o.items.map(i => (i.product && i.product._id) ? i.product._id : i.product)).filter(id => id);
   
-  // Get ONLY reviews for efficiency
   const products = await Product.find({ _id: { $in: productIds } }).select('reviews').lean();
 
-  // Inject review status
   orders.forEach(order => {
     order.items.forEach(item => {
       const productIdStr = (item.product?._id || item.product)?.toString();
       const product = products.find(p => p._id.toString() === productIdStr);
 
       if (product && product.reviews) {
-        // Match review by Order ID
         const existingReview = product.reviews.find(r => r.orderId && r.orderId.toString() === order._id.toString());
         
         if (existingReview) {
@@ -262,7 +293,6 @@ export async function getUserOrders() {
   return serialize(orders);
 }
 
-// --- CART CALCULATION ---
 function computeRuleDiscount(rule, verifiedItems, cartTotal, totalQty) {
   const now = new Date();
   if (!rule.isActive) return 0;
@@ -413,7 +443,6 @@ export async function createOrder(orderData) {
   await connectDB();
   const session = await getServerSession(authOptions);
   
-  // ✅ FIX: BLOCK GUEST ORDERS
   if (!session || !session.user) {
       return { error: "Please log in to place an order." };
   }
@@ -498,6 +527,7 @@ export async function getAdminOrders() {
   return serialize(orders);
 }
 
+// ✅ UPDATED FUNCTION with GTM/META Trigger
 export async function updateOrderStatus(orderId, newStatus, cancellationReason = null) {
   await connectDB();
   try {
@@ -506,6 +536,7 @@ export async function updateOrderStatus(orderId, newStatus, cancellationReason =
 
     const oldStatus = order.status;
     
+    // --- 1. HANDLE CANCELLATION (Restock) ---
     if (newStatus === 'Cancelled' && oldStatus !== 'Cancelled') {
        for (const item of order.items) {
           if (item.product) {
@@ -521,12 +552,21 @@ export async function updateOrderStatus(orderId, newStatus, cancellationReason =
        }
     }
     
+    // --- 2. HANDLE GTM / META TRIGGER ---
+    if (newStatus === 'Processing' && oldStatus !== 'Processing') {
+        // We do not await this because we don't want to block the UI update if GTM is slow
+        sendGTMServerEvent(order);
+    }
+
     order.status = newStatus;
     if (cancellationReason) order.cancellationReason = cancellationReason;
     await order.save();
     revalidatePath('/admin/orders');
     return { success: true };
-  } catch (error) { return { error: "Failed to update status" }; }
+  } catch (error) { 
+    console.error("Order Update Error:", error);
+    return { error: "Failed to update status" }; 
+  }
 }
 
 // =========================================
@@ -545,7 +585,6 @@ export async function getCategoryPageData(slug, filters = {}) {
   const max = filters.maxPrice ? Number(filters.maxPrice) : Infinity;
   const now = new Date();
 
-  // Helper to build filtering query
   const buildProductQuery = (catId) => {
     const query = { category: catId };
 
@@ -561,10 +600,10 @@ export async function getCategoryPageData(slug, filters = {}) {
            { $gte: [
               { $cond: {
                   if: { $and: [
-                     { $gt: ["$discountPrice", 0] },
-                     { $lt: ["$discountPrice", "$price"] },
-                     { $or: [ { $eq: ["$saleStartDate", null] }, { $lte: ["$saleStartDate", now] } ] },
-                     { $or: [ { $eq: ["$saleEndDate", null] }, { $gte: ["$saleEndDate", now] } ] }
+                      { $gt: ["$discountPrice", 0] },
+                      { $lt: ["$discountPrice", "$price"] },
+                      { $or: [ { $eq: ["$saleStartDate", null] }, { $lte: ["$saleStartDate", now] } ] },
+                      { $or: [ { $eq: ["$saleEndDate", null] }, { $gte: ["$saleEndDate", now] } ] }
                   ]},
                   then: "$discountPrice",
                   else: "$price"
@@ -574,10 +613,10 @@ export async function getCategoryPageData(slug, filters = {}) {
            { $lte: [
               { $cond: {
                   if: { $and: [
-                     { $gt: ["$discountPrice", 0] },
-                     { $lt: ["$discountPrice", "$price"] },
-                     { $or: [ { $eq: ["$saleStartDate", null] }, { $lte: ["$saleStartDate", now] } ] },
-                     { $or: [ { $eq: ["$saleEndDate", null] }, { $gte: ["$saleEndDate", now] } ] }
+                      { $gt: ["$discountPrice", 0] },
+                      { $lt: ["$discountPrice", "$price"] },
+                      { $or: [ { $eq: ["$saleStartDate", null] }, { $lte: ["$saleStartDate", now] } ] },
+                      { $or: [ { $eq: ["$saleEndDate", null] }, { $gte: ["$saleEndDate", now] } ] }
                   ]},
                   then: "$discountPrice",
                   else: "$price"

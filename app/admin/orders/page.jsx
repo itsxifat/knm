@@ -239,6 +239,7 @@ export default function AdminOrdersPage() {
   const handleStatusChange = async (id, status, reason = null) => {
     setOrders(prev => prev.map(o => o._id === id ? { ...o, status } : o));
     await updateOrderStatus(id, status, reason);
+    // Refresh to get any backend updates
     const data = await getAdminOrders();
     setOrders(data);
   };

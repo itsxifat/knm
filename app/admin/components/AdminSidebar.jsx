@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 const SidebarContent = ({ activePath, onClickItem }) => {
   const menuItems = [
     { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/admin/sections', label: 'Homepage Sections', icon: LayoutDashboard },
     { href: '/admin/orders', label: 'Orders', icon: Package },
     { href: '/admin/products', label: 'Products', icon: ShoppingBag }, 
     { href: '/admin/tags', label: 'Product Tags', icon: Tag }, 
@@ -32,7 +33,8 @@ const SidebarContent = ({ activePath, onClickItem }) => {
   const whiteFilter = "brightness(0) invert(1)"; 
 
   return (
-    <div className="flex flex-col h-full bg-[#050505] text-white border-r border-white/5 shadow-2xl relative overflow-hidden">
+    <div className="flex flex-col h-full bg-[#050505] text-white border-r border-white/5 shadow-2xl relative overflow-hidden"
+    data-lenis-prevent>
       
       {/* Background Ambience */}
       <div className="absolute top-0 left-0 w-full h-[300px] bg-[#B91C1C]/10 blur-[80px] pointer-events-none" />

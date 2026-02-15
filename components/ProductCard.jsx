@@ -33,7 +33,8 @@ const Taka = ({ size = 14, className = "", weight = "bold" }) => (
   </svg>
 );
 
-export default function ProductCard({ product }) {
+// ✅ FIX: Added 'priority' prop default to false
+export default function ProductCard({ product, priority = false }) {
   const [showSizes, setShowSizes] = useState(false);
   const [status, setStatus] = useState('idle'); 
   
@@ -108,7 +109,8 @@ export default function ProductCard({ product }) {
   };
 
   return (
-    <div className="group block w-full h-full relative">
+    // ✅ FIX: Added 'content-visibility-auto' class (from globals.css) for off-screen rendering
+    <div className="product-card group block w-full h-full relative">
         <Link href={`/product/${product.slug}`} className="block w-full h-full">
         
         {/* IMAGE CONTAINER */}
@@ -118,12 +120,14 @@ export default function ProductCard({ product }) {
                 src={product.images?.[0] || '/placeholder.jpg'} 
                 alt={product.name}
                 fill
-                sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+                // ✅ FIX: Forces browser to download immediately if priority=true
+                priority={priority}
+                // ✅ FIX: Standardized sizes for better cache hits
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                 className="object-cover transition-transform duration-[1.5s] ease-out transform-gpu will-change-transform group-hover:scale-105"
-                loading="lazy" 
+                // ✅ FIX: Ensure decoding is async to prevent UI blocking
                 decoding="async"
                 quality={90}
-                style={{ backfaceVisibility: 'hidden' }}
             />
 
             {/* Overlay */}
@@ -172,13 +176,13 @@ export default function ProductCard({ product }) {
                                          onClick={(e) => handleSizeSelect(e, variant)}
                                          disabled={variant.stock <= 0}
                                          className={`h-8 min-w-[36px] px-2 text-[10px] font-bold border transition-all duration-300
-                                             ${variant.stock > 0 
+                                            ${variant.stock > 0 
                                                  ? 'border-gray-200 hover:border-[#C5A059] hover:bg-[#C5A059] hover:text-white text-[#121212]' 
                                                  : 'border-gray-100 text-gray-300 cursor-not-allowed line-through bg-gray-50'
-                                             }
+                                            }
                                          `}
                                      >
-                                         {variant.size}
+                                          {variant.size}
                                      </button>
                                  ))}
                              </div>

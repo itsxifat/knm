@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * KNM COMMERCE ENGINE - Rebranded
+ * KNM COMMERCE ENGINE - Rebranded & Fixed
  */
 
 import { useState, useEffect, useRef, useMemo } from 'react';
@@ -81,7 +81,8 @@ const ProductSkeleton = () => (
 // ----------------------------------------------------------------------------
 
 export default function ProductListing({ initialProducts }) {
-  const [products] = useState(initialProducts || []);
+  // ✅ FIX: Ensure products is always an array to prevent "forEach" crash
+  const [products] = useState(Array.isArray(initialProducts) ? initialProducts : (initialProducts?.products || []));
   
   // Logic
   const [searchQuery, setSearchQuery] = useState('');
@@ -101,12 +102,21 @@ export default function ProductListing({ initialProducts }) {
   const facets = useMemo(() => {
     const cats = {};
     const tags = {};
-    products.forEach(p => {
-      if (p.category?.name) cats[p.category.name] = (cats[p.category.name] || 0) + 1;
-      if (p.tags && Array.isArray(p.tags)) {
-        p.tags.forEach(t => { if (t.name) tags[t.name] = (tags[t.name] || 0) + 1; });
-      }
-    });
+    
+    // ✅ FIX: Added safety check for products array
+    if (Array.isArray(products)) {
+        products.forEach(p => {
+          if (p.category?.name) cats[p.category.name] = (cats[p.category.name] || 0) + 1;
+          if (p.tags && Array.isArray(p.tags)) {
+            p.tags.forEach(t => { 
+                // Handle both object tags and string tags (if any legacy data exists)
+                const tagName = typeof t === 'object' ? t.name : t;
+                if (tagName) tags[tagName] = (tags[tagName] || 0) + 1; 
+            });
+          }
+        });
+    }
+
     return {
       categories: Object.entries(cats).map(([name, count]) => ({ name, count })),
       tags: Object.entries(tags).map(([name, count]) => ({ name, count }))
@@ -114,17 +124,20 @@ export default function ProductListing({ initialProducts }) {
   }, [products]);
 
   const processedData = useMemo(() => {
+    if (!Array.isArray(products)) return [];
+
     let result = [...products];
+    
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(p => 
         p.name.toLowerCase().includes(q) || 
         (p.category?.name && p.category.name.toLowerCase().includes(q)) ||
-        (p.tags && p.tags.some(t => t.name.toLowerCase().includes(q)))
+        (p.tags && p.tags.some(t => (t.name || t).toLowerCase().includes(q)))
       );
     }
     if (activeFilters.categories.length > 0) result = result.filter(p => p.category && activeFilters.categories.includes(p.category.name));
-    if (activeFilters.tags.length > 0) result = result.filter(p => p.tags && p.tags.some(t => activeFilters.tags.includes(t.name)));
+    if (activeFilters.tags.length > 0) result = result.filter(p => p.tags && p.tags.some(t => activeFilters.tags.includes(t.name || t)));
     
     const getPrice = (p) => p.discountPrice || p.price;
     result.sort((a, b) => {
@@ -220,9 +233,9 @@ export default function ProductListing({ initialProducts }) {
           </button>
 
           <div className="hidden lg:flex items-center gap-3 border-b border-transparent hover:border-[#E5E5E5] transition-colors w-72 pb-1">
-             <Search size={14} className="text-[#8C8279]"/>
-             <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="SEARCH COLLECTIONS..." className="bg-transparent text-[10px] font-bold uppercase tracking-widest outline-none w-full placeholder:text-[#E5E5E5] text-[#121212]"/>
-             {searchQuery && <button onClick={() => setSearchQuery('')} className="text-[#8C8279] hover:text-[#C5A059]"><XCircle size={12}/></button>}
+              <Search size={14} className="text-[#8C8279]"/>
+              <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="SEARCH COLLECTIONS..." className="bg-transparent text-[10px] font-bold uppercase tracking-widest outline-none w-full placeholder:text-[#E5E5E5] text-[#121212]"/>
+              {searchQuery && <button onClick={() => setSearchQuery('')} className="text-[#8C8279] hover:text-[#C5A059]"><XCircle size={12}/></button>}
           </div>
 
           <div className="flex items-center gap-8">
@@ -277,8 +290,11 @@ const ProductCardRenderer = ({ product, viewMode }) => {
       // 1. DB Tag (with color)
       if (product.tags && product.tags.length > 0) {
           const t = product.tags[0];
+          // Handle both object and string tags safely
           if (t && typeof t === 'object' && t.name) {
               return { name: t.name, color: t.color || '#C5A059' };
+          } else if (typeof t === 'string') {
+              return { name: t, color: '#C5A059' };
           }
       }
       // 2. Sale Fallback

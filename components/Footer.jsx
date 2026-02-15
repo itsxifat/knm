@@ -12,9 +12,27 @@ import {
   ArrowUpRight, Clock, MapPin, X, Send, ChevronDown, Search
 } from 'lucide-react';
 
+const WhatsAppIcon = ({ size = 20, className = "" }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    width={size} 
+    height={size} 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className={className}
+  >
+    <path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21" />
+    <path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1" />
+  </svg>
+);
+
 // --- 1. PREMIUM TOAST CONFIG ---
 const toastStyle = {
-  background: '#121212',
+  background: '#041610', // Premium Dark Green
   color: '#C5A059',
   border: '1px solid #C5A059',
   borderRadius: '2px',
@@ -31,12 +49,12 @@ const premiumToast = {
   success: (msg) => toast.success(msg, {
     duration: 5000,
     style: toastStyle,
-    iconTheme: { primary: '#C5A059', secondary: '#121212' },
+    iconTheme: { primary: '#C5A059', secondary: '#041610' },
   }),
   error: (msg) => toast.error(msg, {
     duration: 5000,
     style: { ...toastStyle, color: '#ef4444', borderColor: '#7f1d1d' },
-    iconTheme: { primary: '#ef4444', secondary: '#121212' },
+    iconTheme: { primary: '#ef4444', secondary: '#041610' },
   })
 };
 
@@ -61,7 +79,8 @@ const CountrySelector = ({ selectedIso, onChange }) => {
     );
   }, [search]);
 
-  const selectedCountry = ALL_COUNTRIES.find(c => c.code === selectedIso) || ALL_COUNTRIES[0];
+  // Fallback to first country if selection not found
+  const selectedCountry = ALL_COUNTRIES.find(c => c.code === selectedIso) || ALL_COUNTRIES[0] || { flag: '🌐', dial_code: '+00' };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -91,9 +110,9 @@ const CountrySelector = ({ selectedIso, onChange }) => {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute top-full left-0 z-50 w-64 bg-[#121212] border border-[#C5A059]/20 shadow-2xl mt-2 max-h-60 flex flex-col"
+            className="absolute top-full left-0 z-50 w-64 bg-[#0a2118] border border-[#C5A059]/20 shadow-2xl mt-2 max-h-60 flex flex-col"
           >
-            <div className="p-2 border-b border-white/10 sticky top-0 bg-[#121212] z-10">
+            <div className="p-2 border-b border-white/10 sticky top-0 bg-[#0a2118] z-10">
               <div className="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-sm border border-white/10">
                 <Search size={12} className="text-gray-500" />
                 <input
@@ -166,8 +185,8 @@ const SocialButton = ({ icon: Icon, href }) => (
     href={href}
     target="_blank"
     rel="noopener noreferrer"
-    whileHover={{ scale: 1.05, backgroundColor: '#C5A059', color: '#121212', borderColor: '#C5A059' }}
-    className="w-10 h-10 rounded-sm border border-[#C5A059]/30 flex items-center justify-center text-[#C5A059] hover:text-[#121212] cursor-pointer transition-colors duration-300 bg-white/5"
+    whileHover={{ scale: 1.05, backgroundColor: '#C5A059', color: '#041610', borderColor: '#C5A059' }}
+    className="w-10 h-10 rounded-sm border border-[#C5A059]/30 flex items-center justify-center text-[#C5A059] hover:text-[#041610] cursor-pointer transition-colors duration-300 bg-white/5"
   >
     <Icon size={18} strokeWidth={1.5} />
   </motion.a>
@@ -292,7 +311,8 @@ export default function Footer() {
   };
 
   return (
-    <footer className="bg-[#050505] text-white pt-24 pb-0 font-body relative overflow-hidden border-t border-[#C5A059]/20 selection:bg-[#C5A059] selection:text-white">
+    // ✅ CHANGED: Background to Premium Dark Green (#041610)
+    <footer className="bg-[#041610] text-white pt-24 pb-0 font-body relative overflow-hidden border-t border-[#C5A059]/20 selection:bg-[#C5A059] selection:text-white">
       
       <Toaster position="top-right" containerStyle={{ zIndex: 999999 }} />
 
@@ -301,7 +321,7 @@ export default function Footer() {
       
       <div className="max-w-[1920px] mx-auto px-6 md:px-12 relative z-10">
         
-        {/* --- APPOINTMENT CTA (Replaced Join Community) --- */}
+        {/* --- APPOINTMENT CTA --- */}
         <div className="flex flex-col lg:flex-row justify-between items-center gap-12 pb-20 border-b border-[#C5A059]/10 mb-20">
           <div className="text-center lg:text-left space-y-4 max-w-2xl">
             <h2 className="text-4xl md:text-5xl font-heading font-normal text-white uppercase tracking-tight leading-none">
@@ -314,9 +334,9 @@ export default function Footer() {
           <div>
             <button 
               onClick={() => setIsModalOpen(true)}
-              className="group relative px-10 py-5 bg-[#C5A059] text-[#121212] text-[10px] font-bold uppercase tracking-[0.3em] overflow-hidden hover:text-white transition-colors duration-500"
+              className="group relative px-10 py-5 bg-[#C5A059] text-[#041610] text-[10px] font-bold uppercase tracking-[0.3em] overflow-hidden hover:text-white transition-colors duration-500"
             >
-              <span className="absolute inset-0 bg-[#121212] translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out"></span>
+              <span className="absolute inset-0 bg-[#0a2118] translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out"></span>
               <span className="relative flex items-center gap-3">
                 Book Appointment <ArrowUpRight size={14} />
               </span>
@@ -331,15 +351,15 @@ export default function Footer() {
           <div className="lg:col-span-4 flex flex-col justify-between h-full space-y-8 lg:space-y-0 pr-0 lg:pr-12">
               <div className="space-y-8">
                  <div className="relative w-40 h-16">
-                    <Image src="/logo.png" alt="KNM" fill className="object-contain object-left opacity-90" />
+                    <Image src="/logo-knm.png" alt="KNM" fill className="object-contain object-left opacity-90" />
                  </div>
                  <p className="text-gray-500 text-xs leading-relaxed max-w-xs font-light">
                     Crafting timeless elegance for the modern gentleman since 2024. A legacy of quality, tradition, and style.
                  </p>
                  <div className="flex gap-4">
-                    <SocialButton icon={Instagram} href="#" />
-                    <SocialButton icon={Facebook} href="#" />
-                    <SocialButton icon={Linkedin} href="#" />
+                    <SocialButton icon={Instagram} href="https://www.instagram.com/knm.bangladesh" />
+                    <SocialButton icon={Facebook} href="https://www.facebook.com/knm.bangladesh" />
+                    <SocialButton icon={WhatsAppIcon} href="https://api.whatsapp.com/send/?phone=8801711751172&text&type=phone_number&app_absent=0" />
                  </div>
               </div>
           </div>
@@ -356,20 +376,26 @@ export default function Footer() {
         {/* --- BOTTOM BAR --- */}
         <div className="relative border-t border-[#C5A059]/10 pt-8 overflow-hidden">
            <div className="flex flex-col md:flex-row justify-between items-center gap-6 pb-24 2xl:pb-32 relative z-20">
-              <div className="flex items-center gap-6 text-[10px] font-bold text-gray-600 uppercase tracking-[0.2em]">
+              <div className="flex items-center gap-6 text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em]">
                   <p>&copy; {currentYear} KNM Heritage.</p>
                   <span className="text-[#C5A059]">|</span>
-                  <p>Site by <span className="text-[#C5A059] hover:text-white transition-colors cursor-pointer">Enfinito</span></p>
+                  {/* ✅ CHANGED: Clickable Enfinito Link */}
+                  <p>Site by <a href="https://enfinito.com" target="_blank" rel="noreferrer" className="text-[#C5A059] hover:text-white transition-colors cursor-pointer">Enfinito</a></p>
               </div>
               <div className="text-[10px] font-bold text-gray-600 uppercase tracking-widest hidden md:block">
                   Engineered for the Modern Aesthetic.
               </div>
            </div>
            
-           {/* GIANT TEXT */}
-           <h1 className="font-heading text-[22vw] leading-[0.7] text-center text-[#C5A059] opacity-[0.03] font-black absolute bottom-[-5%] left-1/2 -translate-x-1/2 w-full select-none pointer-events-none -z-10">
-             KNM
-           </h1>
+           {/* ✅ CHANGED: Giant Logo instead of Text */}
+           <div className="absolute bottom-[-10%] left-1/2 -translate-x-1/2 w-[90%] md:w-[60%] h-[30vh] opacity-[0.04] pointer-events-none -z-10 select-none grayscale mix-blend-overlay">
+              <Image 
+                src="/logo.png" 
+                alt="KNM" 
+                fill 
+                className="object-contain object-bottom"
+              />
+           </div>
         </div>
       </div>
 
@@ -386,15 +412,15 @@ export default function Footer() {
             
             <motion.div 
               variants={modalVariants} initial="hidden" animate="visible" exit="exit"
-              className="relative w-full max-w-2xl bg-[#121212] border border-[#C5A059]/20 shadow-2xl flex flex-col max-h-[90vh]"
+              className="relative w-full max-w-2xl bg-[#0a2118] border border-[#C5A059]/20 shadow-2xl flex flex-col max-h-[90vh]"
             >
               
-              <div className="flex items-center justify-between p-6 md:p-8 border-b border-[#C5A059]/20 bg-[#121212] z-10 shrink-0">
+              <div className="flex items-center justify-between p-6 md:p-8 border-b border-[#C5A059]/20 bg-[#0a2118] z-10 shrink-0">
                 <div>
                   <h3 className="font-heading text-2xl md:text-3xl text-white uppercase tracking-tight">Book Appointment</h3>
                   <div className="flex gap-6 mt-3">
-                    <span className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gray-500"><MapPin size={12} className="text-[#C5A059]"/> Banani & Gulshan</span>
-                    <span className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gray-500"><Clock size={12} className="text-[#C5A059]"/> 10am - 8pm</span>
+                    <span className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gray-400"><MapPin size={12} className="text-[#C5A059]"/> Banani & Gulshan</span>
+                    <span className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gray-400"><Clock size={12} className="text-[#C5A059]"/> 10am - 8pm</span>
                   </div>
                 </div>
                 <button onClick={() => setIsModalOpen(false)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors border border-white/5">
@@ -402,7 +428,7 @@ export default function Footer() {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar bg-[#0a0a0a]">
+              <div className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar bg-[#061812]">
                 <form onSubmit={handleSubmit} className="space-y-8">
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -433,8 +459,8 @@ export default function Footer() {
                         value={formData.store} onChange={e => setFormData({...formData, store: e.target.value})} 
                         className="peer w-full bg-transparent border-b border-white/10 py-3 text-sm font-body text-white focus:border-[#C5A059] outline-none rounded-none cursor-pointer appearance-none"
                       >
-                        <option className="bg-[#121212]" value="Banani Flagship">Banani Flagship</option>
-                        <option className="bg-[#121212]" value="Gulshan Gallery">Gulshan Gallery</option>
+                        <option className="bg-[#0a2118]" value="Banani Flagship">Banani Flagship</option>
+                        <option className="bg-[#0a2118]" value="Gulshan Gallery">Gulshan Gallery</option>
                       </select>
                     </InputGroup>
                   </div>
@@ -458,7 +484,7 @@ export default function Footer() {
                   <button 
                     disabled={loading} 
                     type="submit" 
-                    className="w-full bg-[#C5A059] text-[#121212] py-5 text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-white transition-colors duration-500 flex items-center justify-center gap-3 mt-6 shadow-[0_0_20px_rgba(197,160,89,0.1)]"
+                    className="w-full bg-[#C5A059] text-[#041610] py-5 text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-white transition-colors duration-500 flex items-center justify-center gap-3 mt-6 shadow-[0_0_20px_rgba(197,160,89,0.1)]"
                   >
                     {loading ? "Processing..." : <>Confirm Request <Send size={14}/></>}
                   </button>
@@ -473,7 +499,7 @@ export default function Footer() {
   );
 }
 
-// --- FULL COUNTRY DATA ---
+// --- FULL COUNTRY DATA (Placed at bottom, defined only once) ---
 const ALL_COUNTRIES = [
   { name: "Afghanistan", code: "AF", dial_code: "+93", flag: "🇦🇫" },
   { name: "Albania", code: "AL", dial_code: "+355", flag: "🇦🇱" },

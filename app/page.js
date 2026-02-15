@@ -2,6 +2,8 @@ import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import CategorySection from "@/components/CategorySection"; 
 import RecommendedSection from "../components/RecommendedSection"; // <--- THIS IS THE CORRECT IMPORT
+import SectionRenderer from '@/components/sections/SectionRenderer';
+import { getHomepageSections } from '@/actions/sectionActions';
 import connectDB from "@/lib/db";
 import HeroModel from "@/models/Hero";
 import SiteContent from "@/models/SiteContent";
@@ -24,6 +26,9 @@ export default async function Home() {
     imageMobile: slide.mobileImage || null
   }));
 
+  // Fetch dynamic sections from DB
+  const sections = await getHomepageSections();
+
   return (
     <main className="min-h-screen bg-white">
       <Navbar navData={navData} />
@@ -42,6 +47,8 @@ export default async function Home() {
 
       {/* Recommendations */}
       <RecommendedSection />
+
+      <SectionRenderer sections={sections} />
 
     </main>
   );
