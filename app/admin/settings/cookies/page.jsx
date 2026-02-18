@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react'; // Removed unused 'useRef'
 import { addAccount, deleteAccount, refreshAllAccounts, getAccounts } from '@/actions/steadfastAuth';
-import { Save, Trash2, RefreshCw, CheckCircle, XCircle, Plus, Shield, Loader2, Eye, EyeOff, Truck } from 'lucide-react';
+// ✅ FIX: Added 'AlertCircle' to imports
+import { Trash2, RefreshCw, CheckCircle, XCircle, Plus, Shield, Loader2, Eye, EyeOff, Truck, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // --- TOAST COMPONENT ---
-const Toast = ({ message, type, onClose }) => (
+const Toast = ({ message, type }) => (
   <motion.div 
     initial={{ opacity: 0, y: 50 }} 
     animate={{ opacity: 1, y: 0 }} 

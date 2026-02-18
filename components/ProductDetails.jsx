@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Star, Minus, Plus, ChevronRight, ShoppingBag, X, Ruler, ZoomIn, Check, AlertCircle, ChevronDown, ChevronUp, ChevronLeft, ArrowRight } from 'lucide-react';
+import { Star, Minus, Plus, ChevronRight, ShoppingBag, X, Ruler, ZoomIn, Check, AlertCircle, ChevronDown, ChevronUp, ChevronLeft, ArrowRight, Loader2 } from 'lucide-react';
 import { useCart } from '@/lib/context/CartContext'; 
 import Image from 'next/image'; 
 import gsap from 'gsap';

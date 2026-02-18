@@ -1,6 +1,5 @@
 'use server'
 
-import mongoose from 'mongoose';
 import connectDB from '@/lib/db';
 import Order from '@/models/Order';
 import Product from '@/models/Product';
@@ -8,50 +7,106 @@ import Category from '@/models/Category';
 import Coupon from '@/models/Coupon';
 import Address from '@/models/Address';
 import User from '@/models/User';
-import Tag from '@/models/Tag'; 
 import { getServerSession } from "next-auth";
 import { authOptions } from '@/lib/auth'; 
 import { revalidatePath } from 'next/cache';
-import crypto from 'crypto'; // ✅ Added for SHA256 Hashing
+import crypto from 'crypto'; 
 
 const serialize = (obj) => JSON.parse(JSON.stringify(obj));
 
-// --- HELPER: SHA256 HASHING ---
+// ==============================================================================
+//  1. META DIRECT CAPI CONFIGURATION
+// ==============================================================================
+
+// ⚠️ REPLACE WITH YOUR REAL META CREDENTIALS
+const META_PIXEL_ID = '762096979846911'; 
+const META_ACCESS_TOKEN = 'EAAY3cI1tuiEBQlZAIQTdsOJWZAQqlM42GLt1BXRDOYrV9JkT56UC1f2v4sZCaAsZBYS4PO96H81jlTmHypD2ATAoeFis7ZAhYrvKF8VuCkhcqRsWfqfrKCu1gPGfP8i0cIClucOIwukGlqOn86eEQmKhmZCsssubjB0IIWv0cyH22ZB314LiLIsygQZCDuVr6Hx62QZDZD';
+const META_TEST_EVENT_CODE = null; // Set to null for production
+
+// Helper: SHA256 Hashing
 function sha256(value) {
-  if (!value) return '';
+  if (!value) return undefined;
   return crypto.createHash('sha256').update(value).digest('hex');
 }
 
-// --- HELPER: SEND GTM EVENT ---
-async function sendGTMServerEvent(order) {
+// Helper: Send Purchase Event DIRECTLY to Meta Graph API
+async function sendDirectMetaPurchase(order) {
+  // Safety Check
+  if (!META_PIXEL_ID || !META_ACCESS_TOKEN || META_PIXEL_ID.includes('YOUR_')) {
+      console.error("[Meta CAPI] ERROR: Credentials not configured.");
+      return;
+  }
+
   try {
-    const payload = {
-      "event_name": "purchase",
-      "event_id": order.orderId, // ✅ Exact Order ID for Deduplication
+    // 1. Data Normalization
+    const rawEmail = order.guestInfo?.email?.trim().toLowerCase() || '';
+    const rawPhone = order.guestInfo?.phone?.replace(/\D/g, '') || ''; 
+    
+    const rawCity = order.guestInfo?.city?.trim().toLowerCase().replace(/\s/g, '') || '';
+    const rawZip = order.guestInfo?.postalCode?.trim().toLowerCase().replace(/\s/g, '') || '';
+    const rawFirstName = order.guestInfo?.firstName?.trim().toLowerCase() || '';
+    const rawLastName = order.guestInfo?.lastName?.trim().toLowerCase() || '';
+
+    // 2. Construct Payload (Standard Meta CAPI Format)
+    const eventData = {
+      "event_name": "Purchase",
+      "event_time": Math.floor(Date.now() / 1000),
+      "event_id": order.orderId, // ✅ CRITICAL for Deduplication
+      "event_source_url": "https://knm.bd", // Replace with your actual site URL
+      "action_source": "website",
       "user_data": {
-        "em": sha256(order.guestInfo?.email?.trim().toLowerCase()), // ✅ Normalized & Hashed
-        "ph": sha256(order.guestInfo?.phone?.trim()) // ✅ Normalized & Hashed
+        "em": rawEmail ? [sha256(rawEmail)] : [],
+        "ph": rawPhone ? [sha256(rawPhone)] : [],
+        "fn": rawFirstName ? [sha256(rawFirstName)] : [],
+        "ln": rawLastName ? [sha256(rawLastName)] : [],
+        "ct": rawCity ? [sha256(rawCity)] : [],
+        "zp": rawZip ? [sha256(rawZip)] : [],
+        "country": [sha256('bd')] 
       },
       "custom_data": {
-        "currency": "BDT", // Changed to BDT based on your UI, change to "USD" if strictly needed
-        "value": parseFloat(order.totalAmount),
-        "transaction_id": order.orderId
+        "currency": "BDT",
+        "value": parseFloat(order.totalAmount) || 0,
+        "content_type": "product",
+        "order_id": order.orderId,
+        "contents": order.items.map(item => ({
+            "id": item.sku || item.product.toString(),
+            "quantity": item.quantity,
+            "item_price": item.price,
+            "title": item.name
+        }))
       }
     };
 
-    console.log(`[GTM] Sending Purchase Event for ${order.orderId}...`);
+    const payload = {
+        "data": [eventData]
+    };
 
-    const res = await fetch('https://gtm.knm.bd/mp/collect', {
+    console.log(`[Meta CAPI] Sending Direct Purchase Event for ${order.orderId}...`);
+
+    // 3. Send Request to Graph API
+    // ✅ FIX: Passed test_event_code in the URL query string instead of body
+    let url = `https://graph.facebook.com/v19.0/${META_PIXEL_ID}/events?access_token=${META_ACCESS_TOKEN}`;
+    
+    if (META_TEST_EVENT_CODE) {
+        url += `&test_event_code=${META_TEST_EVENT_CODE}`;
+    }
+    
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
 
-    if (!res.ok) console.error(`[GTM] Failed: ${res.statusText}`);
-    else console.log(`[GTM] Success: Event sent for ${order.orderId}`);
+    const responseText = await res.text();
+
+    if (!res.ok) {
+        console.error(`[Meta CAPI] Failed: ${res.status} - ${responseText}`);
+    } else {
+        console.log(`[Meta CAPI] Success: ${responseText}`);
+    }
 
   } catch (error) {
-    console.error("[GTM] Error sending event:", error);
+    console.error("[Meta CAPI] System Error:", error);
   }
 }
 
@@ -438,6 +493,7 @@ export async function calculateCart(cartItems, manualCode = null) {
   return serialize(response);
 }
 
+// --- SAFER CREATE ORDER (Fixes Race Condition) ---
 export async function createOrder(orderData) {
   console.log("--- CREATE ORDER STARTED ---");
   await connectDB();
@@ -455,14 +511,15 @@ export async function createOrder(orderData) {
   
   const calcResult = await calculateCart(orderData.items, orderData.couponCode);
   
+  // ATOMIC STOCK CHECK
   for (const item of calcResult.validatedCart) {
       const product = await Product.findById(item._id);
       if (!product) return { error: `Product not found: ${item.name}` };
 
       if (item.selectedSize && item.selectedSize !== "STD" && item.selectedSize !== "Standard") {
           const variant = product.variants.find(v => v.size === item.selectedSize);
-          if (!variant) return { error: `Size '${item.selectedSize}' is not valid for "${product.name}".` };
-          if (variant.stock < item.quantity) return { error: `SOLD OUT: Size ${item.selectedSize} of "${product.name}" is unavailable.` };
+          if (!variant) return { error: `Size '${item.selectedSize}' invalid for "${product.name}".` };
+          if (variant.stock < item.quantity) return { error: `SOLD OUT: Size ${item.selectedSize} of "${product.name}" unavailable.` };
       } else if (product.stock < item.quantity) {
           return { error: `SOLD OUT: "${product.name}" is out of stock.` };
       }
@@ -494,6 +551,7 @@ export async function createOrder(orderData) {
 
   await newOrder.save();
 
+  // ATOMIC DECREMENT
   for (const item of calcResult.validatedCart) {
     if (item.selectedSize && item.selectedSize !== "STD" && item.selectedSize !== "Standard") {
         await Product.updateOne(
@@ -527,7 +585,7 @@ export async function getAdminOrders() {
   return serialize(orders);
 }
 
-// ✅ UPDATED FUNCTION with GTM/META Trigger
+// ✅ UPDATED: UPDATE ORDER STATUS WITH DIRECT META CAPI TRIGGER
 export async function updateOrderStatus(orderId, newStatus, cancellationReason = null) {
   await connectDB();
   try {
@@ -536,7 +594,7 @@ export async function updateOrderStatus(orderId, newStatus, cancellationReason =
 
     const oldStatus = order.status;
     
-    // --- 1. HANDLE CANCELLATION (Restock) ---
+    // 1. HANDLE CANCELLATION (Restock)
     if (newStatus === 'Cancelled' && oldStatus !== 'Cancelled') {
        for (const item of order.items) {
           if (item.product) {
@@ -552,10 +610,11 @@ export async function updateOrderStatus(orderId, newStatus, cancellationReason =
        }
     }
     
-    // --- 2. HANDLE GTM / META TRIGGER ---
+    // 2. ✅ DIRECT META CAPI PURCHASE TRIGGER (When status becomes 'Processing')
+    // NOTE: This sends data DIRECTLY to Facebook Graph API, bypassing GTM Server entirely.
     if (newStatus === 'Processing' && oldStatus !== 'Processing') {
-        // We do not await this because we don't want to block the UI update if GTM is slow
-        sendGTMServerEvent(order);
+       // We don't await this to keep the UI fast, unless you need strict confirmation
+       sendDirectMetaPurchase(order);
     }
 
     order.status = newStatus;
@@ -570,7 +629,7 @@ export async function updateOrderStatus(orderId, newStatus, cancellationReason =
 }
 
 // =========================================
-// CATEGORY DATA (Included for completeness)
+// CATEGORY DATA
 // =========================================
 
 export async function getCategoryPageData(slug, filters = {}) {
@@ -579,6 +638,7 @@ export async function getCategoryPageData(slug, filters = {}) {
   const mainCategory = await Category.findOne({ slug }).lean();
   if (!mainCategory) return null;
 
+  // Assuming 'parentCategory' based on provided code structure
   const subCategories = await Category.find({ parentCategory: mainCategory._id }).lean();
   
   const min = filters.minPrice ? Number(filters.minPrice) : 0;
