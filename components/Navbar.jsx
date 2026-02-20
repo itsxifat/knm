@@ -107,12 +107,12 @@ const MobileMenu = ({ isOpen, onClose, navData, session }) => {
           <motion.div 
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-[#121212]/40 backdrop-blur-sm z-[150] lg:hidden"
+            className="fixed inset-0 bg-[#121212]/40 backdrop-blur-sm z-150 lg:hidden"
           />
           <motion.div 
             variants={menuVariants}
             initial="hidden" animate="visible" exit="exit"
-            className="fixed top-0 left-0 h-full w-[85%] max-w-[340px] bg-[#F9F6F0] z-[160] shadow-2xl overflow-y-auto lg:hidden flex flex-col border-r border-[#C5A059]/20"
+            className="fixed top-0 left-0 h-full w-[85%] max-w-85 bg-[#F9F6F0] z-160 shadow-2xl overflow-y-auto lg:hidden flex flex-col border-r border-[#C5A059]/20"
           >
             {/* Header */}
             <div className="flex justify-between items-center p-6 pb-4 border-b border-[#C5A059]/10 shrink-0">
@@ -144,7 +144,7 @@ const MobileMenu = ({ isOpen, onClose, navData, session }) => {
                     {(searchResults.length > 0) && (
                        <motion.div 
                          variants={searchResultsVariants} initial="hidden" animate="visible" exit="exit"
-                         className="absolute top-full left-0 right-0 mt-2 bg-white border border-[#C5A059]/20 shadow-xl rounded-sm overflow-hidden z-[130] max-h-[50vh] overflow-y-auto custom-scrollbar"
+                         className="absolute top-full left-0 right-0 mt-2 bg-white border border-[#C5A059]/20 shadow-xl rounded-sm overflow-hidden z-130 max-h-[50vh] overflow-y-auto custom-scrollbar"
                        >
                          <div>
                             {searchResults.map((product) => (
@@ -414,15 +414,15 @@ const Navbar = ({ navData }) => {
         initial={{ y: -60, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className={`z-[100] bg-[#F9F6F0] text-[#121212] transition-all duration-300 border-b border-[#C5A059]/20 ${
+        className={`z-100 bg-[#F9F6F0] text-[#121212] transition-all duration-300 border-b border-[#C5A059]/20 ${
           isProductPage ? 'relative' : 'sticky top-0'
         } ${isScrolled ? 'shadow-sm bg-[#F9F6F0]/95 backdrop-blur-md' : ''}`}
         onMouseLeave={handleMouseLeave}
       >
-        <div className="w-full max-w-[1920px] mx-auto px-6 md:px-12">
+        <div className="w-full max-w-480 mx-auto px-6 md:px-12">
           
           {/* TOP ROW */}
-          <div className="flex justify-between items-center h-[55px] md:h-[69px] relative z-[101]">
+          <div className="flex justify-between items-center h-13.75 md:h-17.25 relative z-101">
             
             {/* Left: Mobile Menu & Socials */}
             <div className="flex items-center gap-6 flex-1">
@@ -478,7 +478,7 @@ const Navbar = ({ navData }) => {
                     {(searchOpen && searchResults.length > 0) && (
                        <motion.div 
                          variants={searchResultsVariants} initial="hidden" animate="visible" exit="exit"
-                         className="absolute top-full left-0 mt-3 w-[320px] bg-white border border-[#C5A059]/30 shadow-xl rounded-sm overflow-hidden z-[120]"
+                         className="absolute top-full left-0 mt-3 w-[320px] bg-white border border-[#C5A059]/30 shadow-xl rounded-sm overflow-hidden z-120"
                        >
                          <div>
                             {searchResults.map((product) => (
@@ -522,7 +522,7 @@ const Navbar = ({ navData }) => {
 
             {/* Center: LOGO */}
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center h-full pointer-events-none">
-              <Link href="/" className="block group relative h-[52px] w-[120px] md:h-[60px] md:w-[140px] pointer-events-auto">
+              <Link href="/" className="block group relative h-13 w-30 md:h-15 md:w-35 pointer-events-auto">
                 <Image 
                   src="/logo.png" 
                   alt="KNM" 
@@ -557,7 +557,7 @@ const Navbar = ({ navData }) => {
                 
                 <AnimatePresence>
                   {profileOpen && session && (
-                    <motion.div variants={dropdownVariants} initial="hidden" animate="visible" exit="exit" className="absolute top-full right-0 mt-4 w-60 bg-[#F9F6F0] shadow-2xl border border-[#C5A059]/20 z-[150] rounded-sm overflow-hidden">
+                    <motion.div variants={dropdownVariants} initial="hidden" animate="visible" exit="exit" className="absolute top-full right-0 mt-4 w-60 bg-[#F9F6F0] shadow-2xl border border-[#C5A059]/20 z-150 rounded-sm overflow-hidden">
                       <div className="p-5 border-b border-[#C5A059]/10 bg-[#F5F2EA]">
                         <p className="font-heading font-bold text-[#121212] text-sm uppercase tracking-wide">{session.user?.name}</p>
                         <p className="text-[10px] text-[#8C8279] mt-1 truncate">{session.user?.email}</p>
@@ -576,7 +576,7 @@ const Navbar = ({ navData }) => {
               <Link href="/cart" className="relative transition group p-2 -mr-2 rounded-full hover:bg-[#C5A059]/10">
                 <ShoppingBag size={22} strokeWidth={0.75} className="text-[#121212] group-hover:text-[#C5A059] transition-colors duration-300" />
                 {mounted && cartCount > 0 && (
-                    <span className="absolute top-0 right-0 min-w-[16px] h-[16px] bg-[#C5A059] text-white text-[9px] font-heading font-bold flex items-center justify-center rounded-full px-0.5 shadow-sm">
+                    <span className="absolute top-0 right-0 min-w-4 h-4 bg-[#C5A059] text-white text-[9px] font-heading font-bold flex items-center justify-center rounded-full px-0.5 shadow-sm">
                       {cartCount > 99 ? '99+' : cartCount}
                     </span>
                 )}
@@ -603,7 +603,7 @@ const Navbar = ({ navData }) => {
                     >
                       {link.label}
                     </Link>
-                    <span className={`absolute bottom-1 left-1/2 -translate-x-1/2 h-[2px] bg-[#C5A059] transition-all duration-500 ease-out ${isActive ? 'w-full' : 'w-0 group-hover/link:w-2/3'}`} />
+                    <span className={`absolute bottom-1 left-1/2 -translate-x-1/2 h-0.5 bg-[#C5A059] transition-all duration-500 ease-out ${isActive ? 'w-full' : 'w-0 group-hover/link:w-2/3'}`} />
                   </motion.div>
                 );
               })}
@@ -620,7 +620,7 @@ const Navbar = ({ navData }) => {
               onMouseEnter={() => handleMouseEnter(activeCategory)} 
               onMouseLeave={handleMouseLeave}
             >
-              <div className="max-w-[1920px] mx-auto px-16 py-12">
+              <div className="max-w-480 mx-auto px-16 py-12">
                 <div className="grid grid-cols-12 gap-16">
                   {/* Category Highlight */}
                   <div className="col-span-3 border-r border-[#C5A059]/20 pr-12 flex flex-col justify-center text-right">

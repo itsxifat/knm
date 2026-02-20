@@ -125,7 +125,7 @@ export default function ProductCard({ product, priority = false }) {
         <Link href={`/product/${product.slug}`} className="block w-full h-full" prefetch={false}>
         
         {/* IMAGE CONTAINER */}
-        <div className="relative w-full aspect-[3/4] overflow-hidden bg-[#F9F6F0] mb-4 transform-gpu border border-transparent group-hover:border-[#C5A059]/20 transition-colors duration-500">
+        <div className="relative w-full aspect-3/4 overflow-hidden bg-[#F9F6F0] mb-4 transform-gpu border border-transparent group-hover:border-[#C5A059]/20 transition-colors duration-500">
             <Image 
                 src={product.images?.[0] || '/placeholder.jpg'} alt={product.name} fill priority={priority}
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
@@ -178,7 +178,7 @@ export default function ProductCard({ product, priority = false }) {
                                      <button
                                          key={`${variant.size}-${variant._id || 'v'}`} 
                                          onClick={(e) => handleSizeSelect(e, variant)} disabled={variant.stock <= 0}
-                                         className={`h-8 min-w-[36px] px-2 text-[10px] font-bold border transition-all duration-300 ${variant.stock > 0 ? 'border-gray-200 hover:border-[#C5A059] hover:bg-[#C5A059] hover:text-white text-[#121212]' : 'border-gray-100 text-gray-300 cursor-not-allowed line-through bg-gray-50'}`}
+                                         className={`h-8 min-w-9 px-2 text-[10px] font-bold border transition-all duration-300 ${variant.stock > 0 ? 'border-gray-200 hover:border-[#C5A059] hover:bg-[#C5A059] hover:text-white text-[#121212]' : 'border-gray-100 text-gray-300 cursor-not-allowed line-through bg-gray-50'}`}
                                      >
                                           {variant.size}
                                      </button>
@@ -194,7 +194,7 @@ export default function ProductCard({ product, priority = false }) {
                 <div className="absolute bottom-4 right-4 z-20 md:translate-y-4 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 transition-all duration-500 ease-out">
                     <button 
                         onClick={handleCartClick} disabled={product.stock <= 0 && (!product.variants || product.variants.length === 0)}
-                        className={`bg-white text-[#121212] w-10 h-10 flex items-center justify-center hover:bg-[#C5A059] hover:text-white transition-colors shadow-xl border border-gray-100 ${status === 'success' ? '!bg-green-600 !text-white !border-green-600' : ''}`}
+                        className={`bg-white text-[#121212] w-10 h-10 flex items-center justify-center hover:bg-[#C5A059] hover:text-white transition-colors shadow-xl border border-gray-100 ${status === 'success' ? 'bg-green-600! text-white! border-green-600!' : ''}`}
                         aria-label="Add to Cart"
                     >
                          {status === 'success' ? <Check size={16} /> : <ShoppingBag size={16} strokeWidth={1.5} />}
@@ -209,19 +209,19 @@ export default function ProductCard({ product, priority = false }) {
                 {product.name}
             </h3>
 
-            <div className="flex items-end justify-between min-h-[36px]">
+            <div className="flex items-end justify-between min-h-9">
                 <p className="text-[10px] font-medium text-[#8C8279] uppercase tracking-widest truncate max-w-[55%] mb-1">
                     {product.category?.name || "Collection"}
                 </p>
                 
                 <div className="flex flex-col items-end leading-none">
                     {isSaleActive && (
-                        <div className="flex items-center gap-[1px] text-[10px] text-[#8C8279] line-through decoration-[#8C8279] mb-1">
+                        <div className="flex items-center gap-px text-[10px] text-[#8C8279] line-through decoration-[#8C8279] mb-1">
                             <Taka size={9} weight="normal" className="text-[#8C8279]" />
                             <span>{format(originalPrice)}</span>
                         </div>
                     )}
-                    <div className={`flex items-center gap-[2px] font-heading font-bold ${isSaleActive ? 'text-[#C5A059] text-sm' : 'text-[#121212] text-sm'}`}>
+                    <div className={`flex items-center gap-0.5 font-heading font-bold ${isSaleActive ? 'text-[#C5A059] text-sm' : 'text-[#121212] text-sm'}`}>
                         <Taka size={14} weight="bold" />
                         <span>{format(currentPrice)}</span>
                     </div>

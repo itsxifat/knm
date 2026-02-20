@@ -43,8 +43,8 @@ const FilterOption = ({ label, count, active, onClick }) => (
 
 const ProductSkeleton = () => (
   <div className="flex flex-col gap-2 animate-pulse">
-    <div className="aspect-[3/4] bg-[#F5F2EA] w-full relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/60 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+    <div className="aspect-3/4 bg-[#F5F2EA] w-full relative overflow-hidden">
+      <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/60 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
     </div>
     <div className="h-2 bg-[#F5F2EA] w-2/3 mx-auto" />
     <div className="h-2 bg-[#F5F2EA] w-1/3 mx-auto" />
@@ -192,9 +192,9 @@ export default function ProductListing({ initialProducts, initialSearch = '' }) 
     <main ref={containerRef} className="bg-white min-h-screen pb-32 font-body selection:bg-[#C5A059] selection:text-white overflow-x-hidden">
       
       {/* --- FILTER DRAWER --- */}
-      <div className={`fixed inset-0 z-[100] transition-opacity duration-500 ${isFilterOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+      <div className={`fixed inset-0 z-100 transition-opacity duration-500 ${isFilterOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
         <div onClick={() => setIsFilterOpen(false)} className="absolute inset-0 bg-[#121212]/40 backdrop-blur-sm" />
-        <div ref={filterPanelRef} className="absolute top-0 right-0 h-full w-[380px] max-w-[85vw] bg-[#F9F6F0] shadow-2xl flex flex-col transform translate-x-full border-l border-[#C5A059]/20">
+        <div ref={filterPanelRef} className="absolute top-0 right-0 h-full w-95 max-w-[85vw] bg-[#F9F6F0] shadow-2xl flex flex-col transform translate-x-full border-l border-[#C5A059]/20">
            <div className="px-8 py-10 border-b border-[#C5A059]/10 flex justify-between items-center bg-white shrink-0">
              <div>
                <h2 className="font-heading font-normal text-3xl text-[#121212] uppercase tracking-tight">Filter</h2>
@@ -227,7 +227,7 @@ export default function ProductListing({ initialProducts, initialSearch = '' }) 
 
       {/* --- TOOLBAR --- */}
       <section className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#C5A059]/10 transition-all">
-        <div className="max-w-[1920px] mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
+        <div className="max-w-480 mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
           <button onClick={() => setIsFilterOpen(true)} className="flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.2em] hover:text-[#C5A059] transition group pl-1 text-[#121212]">
             <Filter size={16} strokeWidth={1.5} /> <span>Filter</span>
             {(activeFilters.categories.length + activeFilters.tags.length) > 0 && <span className="w-4 h-4 bg-[#C5A059] text-white text-[8px] flex items-center justify-center rounded-full">{activeFilters.categories.length + activeFilters.tags.length}</span>}
@@ -263,7 +263,7 @@ export default function ProductListing({ initialProducts, initialSearch = '' }) 
       </section>
 
       {/* --- GRID --- */}
-      <div className="max-w-[1920px] mx-auto px-3 md:px-8 pt-12 min-h-[60vh]">
+      <div className="max-w-480 mx-auto px-3 md:px-8 pt-12 min-h-[60vh]">
         {loading ? (
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-6 lg:gap-8">
              {[...Array(10)].map((_, i) => <ProductSkeleton key={i} />)}
@@ -275,7 +275,7 @@ export default function ProductListing({ initialProducts, initialSearch = '' }) 
               : 'flex flex-col gap-8 max-w-5xl mx-auto [content-visibility:auto]' // Added gap for list view
           }>
             {processedData.map((product) => (
-               <div key={product._id} className={`product-item ${viewMode === 'list' ? 'w-full max-w-[600px] mx-auto border-b border-[#F5F2EA] pb-8' : ''}`}>
+               <div key={product._id} className={`product-item ${viewMode === 'list' ? 'w-full max-w-150 mx-auto border-b border-[#F5F2EA] pb-8' : ''}`}>
                   {/* ✅ Using the standard ProductCard */}
                   <ProductCard product={product} />
                </div>
