@@ -2,7 +2,7 @@
 
 import connectDB from '@/lib/db';
 import Order from '@/models/Order';
-import User from '@/models/User'; // ✅ FIXED: Added missing import
+import User from '@/models/User'; 
 import { getServerSession } from "next-auth";
 import { authOptions } from '@/lib/auth'; 
 import { revalidatePath } from 'next/cache';
@@ -22,12 +22,15 @@ const getHeaders = () => ({
 
 const serialize = (obj) => JSON.parse(JSON.stringify(obj));
 
-// Removes # or any special char not allowed by Steadfast
+// Safely removes # or any special char not allowed by Steadfast
 function cleanInvoiceId(id) {
-    return id.replace(/[^a-zA-Z0-9-_]/g, ''); 
+    if (!id) return '';
+    return String(id).replace(/[^a-zA-Z0-9-_]/g, ''); 
 }
 
-// --- 1. SEND SINGLE ORDER (Admin Action) ---
+// ============================================================================
+// 1. SEND SINGLE ORDER (Admin Action)
+// ============================================================================
 export async function sendToSteadfast(orderId) {
   log(`🚀 STARTING SHIPMENT for Order ID: ${orderId}`);
 
@@ -44,16 +47,14 @@ export async function sendToSteadfast(orderId) {
       return { error: "Order not found" };
   }
 
-  const safeInvoiceId = cleanInvoiceId(order.orderId);
-
   const payload = {
-    invoice: safeInvoiceId,
-    recipient_name: `${order.guestInfo.firstName} ${order.guestInfo.lastName}`,
-    recipient_phone: order.guestInfo.phone,
-    recipient_address: `${order.shippingAddress.address}, ${order.shippingAddress.city}`,
-    cod_amount: order.paymentStatus === 'Paid' ? 0 : order.totalAmount,
+    invoice: cleanInvoiceId(order.orderId),
+    recipient_name: `${order.guestInfo?.firstName || 'Guest'} ${order.guestInfo?.lastName || ''}`.trim(),
+    recipient_phone: order.guestInfo?.phone,
+    recipient_address: `${order.shippingAddress?.address || ''}, ${order.shippingAddress?.city || ''}`.trim(),
+    cod_amount: order.paymentStatus === 'Paid' ? 0 : (order.totalAmount || 0),
     note: "Handle with care",
-    delivery_type: 0
+    delivery_type: 0 
   };
 
   log("📝 Payload Prepared:", payload);
@@ -70,9 +71,9 @@ export async function sendToSteadfast(orderId) {
     log(`📄 API Raw Body:`, rawText);
 
     let data;
-    try { data = JSON.parse(rawText); } catch (e) { return { error: "Invalid JSON response" }; }
+    try { data = JSON.parse(rawText); } catch (e) { return { error: "Invalid JSON response from Steadfast" }; }
 
-    if (data.status === 200) {
+    if (data.status === 200 && data.consignment) {
       log("✅ SUCCESS! Consignment Created:", data.consignment);
       
       order.consignment_id = data.consignment.consignment_id;
@@ -94,22 +95,31 @@ export async function sendToSteadfast(orderId) {
   }
 }
 
-// --- 2. BULK SHIP (Admin Action) ---
-export async function bulkShipToSteadfast() {
+// ============================================================================
+// 2. BULK SHIP (Admin Action)
+// ============================================================================
+export async function bulkShipToSteadfast(orderIds = []) {
   log("🚀 STARTING BULK SHIPMENT...");
   await connectDB();
   
-  const orders = await Order.find({ status: 'Processing', consignment_id: { $exists: false } }).limit(500);
-  log(`Found ${orders.length} eligible orders.`);
+  let query = { status: 'Processing', consignment_id: { $exists: false } };
+  
+  // Safely limit query to only the IDs selected on the frontend
+  if (orderIds && orderIds.length > 0) {
+      query._id = { $in: orderIds };
+  }
 
-  if (orders.length === 0) return { error: "No orders to ship." };
+  const orders = await Order.find(query).limit(500);
+  log(`Found ${orders.length} eligible orders to bulk ship.`);
+
+  if (orders.length === 0) return { error: "No eligible orders to ship." };
 
   const payloadData = orders.map(order => ({
     invoice: cleanInvoiceId(order.orderId),
-    recipient_name: `${order.guestInfo.firstName} ${order.guestInfo.lastName}`,
-    recipient_address: `${order.shippingAddress.address}, ${order.shippingAddress.city}`,
-    recipient_phone: order.guestInfo.phone,
-    cod_amount: order.paymentStatus === 'Paid' ? 0 : order.totalAmount,
+    recipient_name: `${order.guestInfo?.firstName || 'Guest'} ${order.guestInfo?.lastName || ''}`.trim(),
+    recipient_address: `${order.shippingAddress?.address || ''}, ${order.shippingAddress?.city || ''}`.trim(),
+    recipient_phone: order.guestInfo?.phone || '',
+    cod_amount: order.paymentStatus === 'Paid' ? 0 : (order.totalAmount || 0),
     note: "Bulk Shipment"
   }));
 
@@ -117,18 +127,30 @@ export async function bulkShipToSteadfast() {
     const res = await fetch(`${BASE_URL}/create_order/bulk-order`, {
       method: 'POST',
       headers: getHeaders(),
+      // ✅ FIX 1: Steadfast REQUIRES the data array to be strictly stringified inside the JSON
       body: JSON.stringify({ data: JSON.stringify(payloadData) }) 
     });
 
     const rawText = await res.text();
     log(`📩 Bulk API Response:`, rawText);
-    const response = JSON.parse(rawText);
+    
+    let response;
+    try { response = JSON.parse(rawText); } catch(e) { return { error: "Invalid API Response" }; }
 
     let successCount = 0;
-    if (Array.isArray(response)) {
-        for (const item of response) {
-            if (item.status === 'success') {
-                const sentOrder = orders.find(o => cleanInvoiceId(o.orderId) === item.invoice);
+    
+    // ✅ FIX 2: Steadfast returns { status: 200, data: [ ...results... ] }. We MUST loop over response.data
+    const resultsArray = response.data;
+
+    // If the API processed the items, it will return an array of statuses
+    if (Array.isArray(resultsArray) && resultsArray.length > 0) {
+        for (const item of resultsArray) {
+            // Check if the individual item was successfully pushed to Steadfast
+            if (item.status === 'success' || item.consignment_id) {
+                
+                // Find the exact local order matching this invoice ID
+                const sentOrder = orders.find(o => cleanInvoiceId(o.orderId) === String(item.invoice));
+                
                 if (sentOrder) {
                     sentOrder.status = 'Shipped';
                     sentOrder.consignment_id = item.consignment_id;
@@ -137,19 +159,25 @@ export async function bulkShipToSteadfast() {
                     await sentOrder.save();
                     successCount++;
                 }
+            } else {
+                log(`⚠️ Item failed for invoice ${item.invoice}:`, item.message || item.errors);
             }
         }
+    } else {
+        return { error: response.message || "Steadfast rejected the payload format." };
     }
     
     revalidatePath('/admin/orders');
     return { success: true, count: successCount };
   } catch (error) { 
     log("❌ BULK SHIP EXCEPTION:", error.message);
-    return { error: "Bulk Ship Failed" }; 
+    return { error: "Bulk Ship Failed. Network Error." }; 
   }
 }
 
-// --- 3. SYNC & GET USER ORDERS (User Action) ---
+// ============================================================================
+// 3. SYNC & GET USER ORDERS (User Action)
+// ============================================================================
 export async function syncAllUserOrders() {
   await connectDB();
   const session = await getServerSession(authOptions);
@@ -158,7 +186,6 @@ export async function syncAllUserOrders() {
 
   let userId = session.user.id;
   if (!userId && session.user.email) {
-    // ✅ User model is now correctly defined via import
     const user = await User.findOne({ email: session.user.email });
     if (user) userId = user._id;
   }
@@ -173,11 +200,13 @@ export async function syncAllUserOrders() {
                   headers: getHeaders(),
                   next: { revalidate: 0 } 
               });
+              
               if(res.ok) {
                   const data = await res.json();
                   if (data.status === 200) {
                       const deliveryStatus = data.delivery_status;
                       let newLocalStatus = order.status;
+                      
                       if (deliveryStatus === 'delivered' || deliveryStatus === 'partial_delivered') newLocalStatus = 'Delivered';
                       if (deliveryStatus === 'cancelled') newLocalStatus = 'Cancelled';
 

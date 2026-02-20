@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -30,9 +30,9 @@ const WhatsAppIcon = ({ size = 20, className = "" }) => (
   </svg>
 );
 
-// --- 1. PREMIUM TOAST CONFIG ---
+// --- PREMIUM TOAST CONFIG ---
 const toastStyle = {
-  background: '#041610', // Premium Dark Green
+  background: '#041610', 
   color: '#C5A059',
   border: '1px solid #C5A059',
   borderRadius: '2px',
@@ -58,28 +58,34 @@ const premiumToast = {
   })
 };
 
-// --- 2. ANIMATION VARIANTS ---
+// --- ANIMATION VARIANTS ---
 const modalVariants = {
   hidden: { opacity: 0, scale: 0.95, y: 20 },
-  visible: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } },
-  exit: { opacity: 0, scale: 0.95, y: 20, transition: { duration: 0.3 } }
+  visible: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } }, 
+  exit: { opacity: 0, scale: 0.95, y: 10, transition: { duration: 0.2 } }
 };
 
-// --- 3. CUSTOM COUNTRY SELECTOR ---
+// --- HIGH-PERFORMANCE COUNTRY SELECTOR ---
 const CountrySelector = ({ selectedIso, onChange }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [visibleCount, setVisibleCount] = useState(20); 
   const dropdownRef = useRef(null);
 
   const filteredCountries = useMemo(() => {
+    if (!search) return ALL_COUNTRIES;
+    const lowerSearch = search.toLowerCase();
     return ALL_COUNTRIES.filter(c => 
-      c.name.toLowerCase().includes(search.toLowerCase()) || 
+      c.name.toLowerCase().includes(lowerSearch) || 
       c.dial_code.includes(search) ||
-      c.code.toLowerCase().includes(search.toLowerCase())
+      c.code.toLowerCase().includes(lowerSearch)
     );
   }, [search]);
 
-  // Fallback to first country if selection not found
+  const visibleCountries = useMemo(() => {
+     return filteredCountries.slice(0, visibleCount);
+  }, [filteredCountries, visibleCount]);
+
   const selectedCountry = ALL_COUNTRIES.find(c => c.code === selectedIso) || ALL_COUNTRIES[0] || { flag: '🌐', dial_code: '+00' };
 
   useEffect(() => {
@@ -91,6 +97,17 @@ const CountrySelector = ({ selectedIso, onChange }) => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+      if (isOpen) setVisibleCount(20);
+  }, [isOpen, search]);
+
+  const handleScroll = useCallback((e) => {
+     const { scrollTop, scrollHeight, clientHeight } = e.target;
+     if (scrollHeight - scrollTop <= clientHeight * 1.5) {
+         setVisibleCount(prev => Math.min(prev + 20, filteredCountries.length));
+     }
+  }, [filteredCountries.length]);
 
   return (
     <div className="relative h-full flex items-center" ref={dropdownRef}>
@@ -110,11 +127,12 @@ const CountrySelector = ({ selectedIso, onChange }) => {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
-            className="absolute top-full left-0 z-50 w-64 bg-[#0a2118] border border-[#C5A059]/20 shadow-2xl mt-2 max-h-60 flex flex-col"
+            transition={{ duration: 0.2 }} 
+            className="absolute top-full left-0 z-50 w-64 bg-[#0a2118] border border-[#C5A059]/20 shadow-2xl mt-2 flex flex-col h-[280px]" 
           >
-            <div className="p-2 border-b border-white/10 sticky top-0 bg-[#0a2118] z-10">
+            <div className="p-2 border-b border-white/10 shrink-0 bg-[#0a2118] z-10">
               <div className="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-sm border border-white/10">
-                <Search size={12} className="text-gray-500" />
+                <Search size={12} className="text-gray-500 shrink-0" />
                 <input
                   type="text"
                   placeholder="Search..."
@@ -125,8 +143,9 @@ const CountrySelector = ({ selectedIso, onChange }) => {
                 />
               </div>
             </div>
-            <div className="overflow-y-auto flex-1 custom-scrollbar">
-              {filteredCountries.map((country) => (
+            
+            <div className="overflow-y-auto flex-1 custom-scrollbar pb-2" onScroll={handleScroll}>
+              {visibleCountries.map((country) => (
                 <button
                   key={country.code}
                   type="button"
@@ -141,9 +160,10 @@ const CountrySelector = ({ selectedIso, onChange }) => {
                     <span className="text-lg leading-none">{country.flag}</span>
                     <span className="truncate max-w-[140px]">{country.name}</span>
                   </span>
-                  <span className="text-gray-500 font-mono">{country.dial_code}</span>
+                  <span className="text-gray-500 font-mono shrink-0">{country.dial_code}</span>
                 </button>
               ))}
+              
               {filteredCountries.length === 0 && (
                 <div className="p-4 text-center text-[10px] text-gray-600">No country found.</div>
               )}
@@ -155,7 +175,7 @@ const CountrySelector = ({ selectedIso, onChange }) => {
   );
 };
 
-// --- 4. INPUT GROUP ---
+// --- INPUT GROUP ---
 const InputGroup = ({ label, type, value, onChange, required, children }) => (
   <div className="group relative pt-6 w-full">
     <div className="relative">
@@ -179,7 +199,7 @@ const InputGroup = ({ label, type, value, onChange, required, children }) => (
   </div>
 );
 
-// --- 5. SOCIAL BUTTON ---
+// --- SOCIAL BUTTON ---
 const SocialButton = ({ icon: Icon, href }) => (
   <motion.a 
     href={href}
@@ -192,7 +212,7 @@ const SocialButton = ({ icon: Icon, href }) => (
   </motion.a>
 );
 
-// --- 6. FOOTER LINKS COLUMN ---
+// --- FOOTER LINKS COLUMN ---
 const FooterColumn = ({ title, links }) => (
   <div className="flex flex-col space-y-5">
     <h4 className="text-[11px] font-heading font-bold uppercase tracking-[0.2em] text-[#C5A059] flex items-center gap-3">
@@ -212,7 +232,7 @@ const FooterColumn = ({ title, links }) => (
   </div>
 );
 
-// --- 7. MAIN COMPONENT ---
+// --- MAIN COMPONENT ---
 export default function Footer() {
   const currentYear = new Date().getFullYear();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -222,7 +242,6 @@ export default function Footer() {
     name: '', company: '', email: '', phone: '', whatsapp: '', store: 'Banani Flagship', subject: '', details: ''
   });
 
-  // Auto-detect IP
   useEffect(() => {
     fetch('https://ipapi.co/json/')
       .then(res => res.json())
@@ -282,7 +301,6 @@ export default function Footer() {
     }
   };
 
-  // Your Requested Routes & Structure
   const columns = {
     col1: {
       title: "Quick Links",
@@ -311,17 +329,18 @@ export default function Footer() {
   };
 
   return (
-    // ✅ CHANGED: Background to Premium Dark Green (#041610)
     <footer className="bg-[#041610] text-white pt-24 pb-0 font-body relative overflow-hidden border-t border-[#C5A059]/20 selection:bg-[#C5A059] selection:text-white">
       
       <Toaster position="top-right" containerStyle={{ zIndex: 999999 }} />
 
-      {/* Texture Overlay */}
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none -z-10 mix-blend-overlay bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+      {/* Texture Overlay Using raw CSS instead of a Tailwind arbitrary URL to prevent build errors */}
+      <div 
+        className="absolute inset-0 opacity-[0.02] pointer-events-none -z-10 mix-blend-overlay"
+        style={{ backgroundImage: "url('https://www.transparenttextures.com/patterns/cubes.png')" }}
+      />
       
       <div className="max-w-[1920px] mx-auto px-6 md:px-12 relative z-10">
         
-        {/* --- APPOINTMENT CTA --- */}
         <div className="flex flex-col lg:flex-row justify-between items-center gap-12 pb-20 border-b border-[#C5A059]/10 mb-20">
           <div className="text-center lg:text-left space-y-4 max-w-2xl">
             <h2 className="text-4xl md:text-5xl font-heading font-normal text-white uppercase tracking-tight leading-none">
@@ -344,10 +363,8 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* --- FOOTER CONTENT --- */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-y-16 lg:gap-12 mb-20">
           
-          {/* Logo & Socials */}
           <div className="lg:col-span-4 flex flex-col justify-between h-full space-y-8 lg:space-y-0 pr-0 lg:pr-12">
               <div className="space-y-8">
                  <div className="relative w-40 h-16">
@@ -364,22 +381,18 @@ export default function Footer() {
               </div>
           </div>
 
-          {/* Spacer */}
           <div className="hidden lg:block lg:col-span-2"></div>
 
-          {/* Navigation Columns */}
           <div className="lg:col-span-2"><FooterColumn title={columns.col1.title} links={columns.col1.links} /></div>
           <div className="lg:col-span-2"><FooterColumn title={columns.col2.title} links={columns.col2.links} /></div>
           <div className="lg:col-span-2"><FooterColumn title={columns.col3.title} links={columns.col3.links} /></div>
         </div>
 
-        {/* --- BOTTOM BAR --- */}
         <div className="relative border-t border-[#C5A059]/10 pt-8 overflow-hidden">
            <div className="flex flex-col md:flex-row justify-between items-center gap-6 pb-24 2xl:pb-32 relative z-20">
               <div className="flex items-center gap-6 text-[10px] font-bold text-gray-500 uppercase tracking-[0.2em]">
                   <p>&copy; {currentYear} KNM Heritage.</p>
                   <span className="text-[#C5A059]">|</span>
-                  {/* ✅ CHANGED: Clickable Enfinito Link */}
                   <p>Site by <a href="https://enfinito.com" target="_blank" rel="noreferrer" className="text-[#C5A059] hover:text-white transition-colors cursor-pointer">Enfinito</a></p>
               </div>
               <div className="text-[10px] font-bold text-gray-600 uppercase tracking-widest hidden md:block">
@@ -387,19 +400,18 @@ export default function Footer() {
               </div>
            </div>
            
-           {/* ✅ CHANGED: Giant Logo instead of Text */}
            <div className="absolute bottom-[-10%] left-1/2 -translate-x-1/2 w-[90%] md:w-[60%] h-[30vh] opacity-[0.04] pointer-events-none -z-10 select-none grayscale mix-blend-overlay">
               <Image 
                 src="/logo.png" 
                 alt="KNM" 
                 fill 
                 className="object-contain object-bottom"
+                priority={false}
               />
            </div>
         </div>
       </div>
 
-      {/* --- RESPONSIVE CENTER MODAL --- */}
       <AnimatePresence>
         {isModalOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -499,7 +511,7 @@ export default function Footer() {
   );
 }
 
-// --- FULL COUNTRY DATA (Placed at bottom, defined only once) ---
+// --- FULL COUNTRY DATA ---
 const ALL_COUNTRIES = [
   { name: "Afghanistan", code: "AF", dial_code: "+93", flag: "🇦🇫" },
   { name: "Albania", code: "AL", dial_code: "+355", flag: "🇦🇱" },

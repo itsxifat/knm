@@ -6,8 +6,12 @@ import ProductListing from '@/components/ProductListing';
 
 export const dynamic = 'force-dynamic';
 
-export default async function ProductsPage() {
+export default async function ProductsPage({ searchParams }) {
   await connectDB();
+
+  // ✅ Await searchParams (Required for modern Next.js 15+)
+  const params = await searchParams;
+  const initialSearch = params?.search || '';
 
   // 1. Fetch Navbar Data
   const siteContent = await SiteContent.findOne({ identifier: 'main_layout' }).lean();
@@ -18,7 +22,7 @@ export default async function ProductsPage() {
 
   const navData = {
     logoImage: "/logo.png",
-    logoText: "OURA",
+    logoText: "KNM", 
     links: sanitizedLinks
   };
 
@@ -26,12 +30,11 @@ export default async function ProductsPage() {
   const products = await getAllProducts();
 
   return (
-    // ✅ FIX: Changed background to White for premium contrast
-    <div className="bg-white min-h-screen text-black selection:bg-[#B91C1C] selection:text-white">
+    <div className="bg-white min-h-screen text-black selection:bg-[#C5A059] selection:text-white">
       <Navbar navData={navData} />
       
-      {/* Product Listing handles its own internal layout/padding */}
-      <ProductListing initialProducts={products} />
+      {/* ✅ Pass initialSearch to pre-filter the products */}
+      <ProductListing initialProducts={products} initialSearch={initialSearch} />
     </div>
   );
 }

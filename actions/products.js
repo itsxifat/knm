@@ -480,10 +480,45 @@ export async function getAllProducts() {
   
   const products = await Product.find({})
     .populate('category', 'name') 
+    .populate('tags') // ✅ THIS IS THE FIX: Now it will fetch { _id, name, color } instead of just the ID string
     .sort({ createdAt: -1 })
     .lean();
 
   return {
-    products: products.map(serializeProduct) // Applies deep serialization to fix buffer/plain object errors
+    products: products.map(serializeProduct) // Applies deep serialization
   };
+}
+
+const serialize = (obj) => JSON.parse(JSON.stringify(obj));
+
+export async function getProductsBySearch(searchQuery) {
+  await connectDB();
+  
+  if (!searchQuery || typeof searchQuery !== 'string') {
+      return [];
+  }
+
+  // Create a case-insensitive regex for the search query
+  const regex = new RegExp(searchQuery, 'i');
+
+  const query = {
+      $or: [
+          { name: regex },
+          { description: regex },
+          { sku: regex }
+      ]
+  };
+
+  try {
+      const products = await Product.find(query)
+          .populate('category')
+          .populate('tags')
+          .sort({ createdAt: -1 })
+          .lean();
+
+      return serialize(products);
+  } catch (error) {
+      console.error("Error searching products:", error);
+      return [];
+  }
 }

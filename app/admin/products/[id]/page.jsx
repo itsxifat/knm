@@ -1,79 +1,83 @@
 'use client';
 
-import { updateProduct, getCategories, getTags, getProductById } from '@/app/actions';
+import { updateProduct, getCategories, getTags, getProductById } from '@/actions/products'; // Adjust path
 import { getSizesData } from '@/actions/sizes'; 
 import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Loader2, UploadCloud, Save, ArrowLeft, X, Check, Image as ImageIcon, Box, Tag, AlertCircle, ChevronDown, Barcode, Percent, Ruler, Layers } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import gsap from 'gsap';
 import { AnimatePresence, motion } from 'framer-motion';
-import StockVariantManager from '../../components/StockVariantManager'; 
+import StockVariantManager from '../../components/StockVariantManager'; // Adjust path
 
 // --- UTILITY: Prevent Input Scroll Change ---
 const preventScroll = (e) => e.target.blur();
 
-// --- UTILITY: High-Performance Image Compression (GPU Friendly) ---
-const generateThumbnail = (file) => {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = (event) => {
-      const img = new Image();
-      img.src = event.target.result;
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 300; 
-        const scaleSize = MAX_WIDTH / img.width;
-        canvas.width = MAX_WIDTH;
-        canvas.height = img.height * scaleSize;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        ctx.canvas.toBlob((blob) => {
-          resolve(URL.createObjectURL(blob));
-        }, 'image/jpeg', 0.7); 
-      };
-    };
-  });
-};
+// --- OPTIMIZED IMAGE COMPONENTS ---
 
-// --- COMPONENT: New Image (Memoized + Compressed) ---
-const ImagePreviewItem = memo(({ file, onRemove }) => {
+// 1. New Image Preview (Fast Object URL, no canvas blocking)
+const ImagePreviewItem = memo(({ file, index, onRemove }) => {
   const [thumb, setThumb] = useState(null);
+
   useEffect(() => {
-    let active = true;
-    generateThumbnail(file).then(url => { if(active) setThumb(url); });
-    return () => { active = false; };
+    // Instant, non-blocking preview creation
+    const url = URL.createObjectURL(file);
+    setThumb(url);
+    // CRITICAL: Prevent memory leaks
+    return () => URL.revokeObjectURL(url);
   }, [file]);
 
+  if (!thumb) return <div className="aspect-square bg-[#F9F6F0] rounded-sm border border-[#C5A059]/20 animate-pulse" />;
+
   return (
-    <div className="aspect-square relative rounded-2xl overflow-hidden shadow-sm border border-gray-200 group bg-white hover:border-[#B91C1C] transition-colors">
-      {!thumb ? <div className="w-full h-full flex items-center justify-center"><Loader2 className="animate-spin text-[#B91C1C]"/></div> 
-      : <img src={thumb} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" alt="New" loading="lazy" decoding="async" />}
-      <button type="button" onClick={onRemove} className="absolute top-2 right-2 p-1.5 bg-white rounded-full text-[#B91C1C] opacity-0 group-hover:opacity-100 transition-all hover:bg-[#B91C1C] hover:text-white shadow-md"><X size={14}/></button>
-      <span className="absolute bottom-2 left-2 text-[9px] font-bold bg-[#B91C1C] text-white px-2 py-0.5 rounded shadow-sm uppercase tracking-wide">NEW</span>
+    <div className="aspect-square relative rounded-sm overflow-hidden shadow-sm border border-[#C5A059]/20 group bg-white hover:border-[#C5A059] transition-colors">
+      <img src={thumb} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" alt="New" loading="lazy" decoding="async" />
+      <button 
+        type="button" 
+        onClick={() => onRemove(index)} 
+        className="absolute top-2 right-2 p-1.5 bg-white rounded-sm text-red-600 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-50 hover:scale-105 shadow-md z-10"
+      >
+        <X size={14}/>
+      </button>
+      <span className="absolute bottom-2 left-2 text-[9px] font-bold bg-[#C5A059] text-white px-2 py-0.5 rounded-sm shadow-sm uppercase tracking-wide z-10">NEW</span>
     </div>
   );
 });
 ImagePreviewItem.displayName = 'ImagePreviewItem';
 
-// --- COMPONENT: Existing Image (Memoized) ---
-const ExistingImageItem = memo(({ url, onRemove }) => (
-  <div className="aspect-square relative rounded-2xl overflow-hidden shadow-sm group bg-gray-50 border border-gray-200 hover:border-[#B91C1C] transition-colors">
-      <img src={url} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" alt="Existing" loading="lazy" decoding="async" />
-      <button type="button" onClick={onRemove} className="absolute top-2 right-2 p-1.5 bg-white rounded-full text-[#B91C1C] opacity-0 group-hover:opacity-100 transition-all hover:bg-[#B91C1C] hover:text-white shadow-md"><X size={14}/></button>
+// 2. Existing Image Preview (Using Next/Image)
+const ExistingImageItem = memo(({ url, index, onRemove }) => (
+  <div className="aspect-square relative rounded-sm overflow-hidden shadow-sm group bg-[#F9F6F0] border border-[#C5A059]/20 hover:border-[#C5A059] transition-colors">
+      <Image src={url} alt="Existing" fill sizes="150px" className="object-cover transition-transform duration-500 group-hover:scale-105" />
+      <button 
+        type="button" 
+        onClick={() => onRemove(index)} 
+        className="absolute top-2 right-2 p-1.5 bg-white rounded-sm text-red-600 opacity-0 group-hover:opacity-100 transition-all hover:bg-red-50 hover:scale-105 shadow-md z-10"
+      >
+        <X size={14}/>
+      </button>
   </div>
 ));
 ExistingImageItem.displayName = 'ExistingImageItem';
 
+// --- TOAST COMPONENT ---
 const Toast = ({ message, type, onClose }) => (
-  <motion.div initial={{ opacity: 0, y: 50, x: '-50%' }} animate={{ opacity: 1, y: 0, x: '-50%' }} exit={{ opacity: 0, y: 20, x: '-50%' }} className={`fixed bottom-8 left-1/2 z-[100] flex items-center gap-4 px-6 py-4 rounded-xl shadow-2xl border backdrop-blur-md min-w-[340px] ${type === 'error' ? 'bg-red-50/95 border-red-200 text-[#B91C1C]' : 'bg-green-50/95 border-green-200 text-green-800'}`}>
-    <div className={`p-2 rounded-full ${type === 'error' ? 'bg-red-100' : 'bg-green-100'}`}>
+  <motion.div 
+    initial={{ opacity: 0, y: 50, x: '-50%' }} 
+    animate={{ opacity: 1, y: 0, x: '-50%' }} 
+    exit={{ opacity: 0, y: 20, x: '-50%' }} 
+    className={`fixed bottom-8 left-1/2 z-[100] flex items-center gap-4 px-6 py-4 rounded-sm shadow-2xl border backdrop-blur-md min-w-[340px] 
+        ${type === 'error' ? 'bg-red-50/95 border-red-200 text-red-800' : 'bg-[#121212] border-[#C5A059]/30 text-white'}`}
+  >
+    <div className={`p-2 rounded-full ${type === 'error' ? 'bg-red-100 text-red-600' : 'bg-[#C5A059]/20 text-[#C5A059]'}`}>
        {type === 'error' ? <AlertCircle size={20} /> : <Check size={20} />}
     </div>
     <div className="flex-1">
-       <p className="text-[10px] font-bold uppercase tracking-widest opacity-60">{type === 'error' ? 'Error' : 'Success'}</p>
-       <p className="text-sm font-bold">{message}</p>
+       <p className={`text-[9px] font-bold uppercase tracking-[0.2em] ${type === 'error' ? 'opacity-60' : 'text-[#C5A059]'}`}>
+           {type === 'error' ? 'Error' : 'System'}
+       </p>
+       <p className="text-sm font-heading tracking-wide mt-0.5">{message}</p>
     </div>
     <button onClick={onClose} className="opacity-40 hover:opacity-100 transition-opacity"><X size={18}/></button>
   </motion.div>
@@ -153,11 +157,13 @@ export default function EditProductPage() {
       finally { setInitLoading(false); }
     }
     load();
-  }, [params.id]);
+  }, [params.id, router]);
 
   // Animation
   useEffect(() => {
-    if (!initLoading && formRef.current) gsap.fromTo(".anim-entry", { opacity: 0, y: 15 }, { opacity: 1, y: 0, duration: 0.4, stagger: 0.05, ease: "power2.out" });
+    if (!initLoading && formRef.current) {
+        gsap.fromTo(".anim-entry", { opacity: 0, y: 15 }, { opacity: 1, y: 0, duration: 0.4, stagger: 0.05, ease: "power2.out" });
+    }
   }, [initLoading]);
 
   // Handlers (Memoized)
@@ -182,7 +188,7 @@ export default function EditProductPage() {
         
         existingImages.forEach(url => formData.append('keptImages', url));
         newImages.forEach(file => formData.append('newImages', file));
-        formData.delete('images'); 
+        formData.delete('images'); // Prevent double sending
 
         formData.append('variants', JSON.stringify(variants));
 
@@ -205,29 +211,31 @@ export default function EditProductPage() {
   };
 
   if (initLoading) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#faf9f6] text-[#B91C1C]">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#F9F6F0] text-[#C5A059]">
         <Loader2 className="animate-spin mb-4" size={40} />
-        <span className="text-xs uppercase tracking-[0.2em] font-bold text-gray-400">Loading Product Data...</span>
+        <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-[#8C8279]">Loading Data...</span>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-[#faf9f6] font-manrope pb-40 text-black">
+    <div className="min-h-screen bg-[#F9F6F0] font-body pb-40 text-[#121212] selection:bg-[#C5A059] selection:text-white">
       <AnimatePresence>{toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}</AnimatePresence>
 
       {/* --- HEADER --- */}
-      <div className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-40 px-8 py-5">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+      <div className="bg-[#F9F6F0]/90 backdrop-blur-md border-b border-[#C5A059]/20 sticky top-0 z-40 px-6 md:px-10 py-4 shadow-sm">
+        <div className="max-w-[1920px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/admin/products" className="p-2.5 hover:bg-gray-100 rounded-full transition text-gray-400 hover:text-black"><ArrowLeft size={20} /></Link>
+            <Link href="/admin/products" className="p-2 hover:bg-[#C5A059]/10 rounded-sm transition text-[#8C8279] hover:text-[#C5A059]">
+               <ArrowLeft size={20} />
+            </Link>
             <div>
-               <h1 className="text-2xl font-bodoni text-black">Edit Product</h1>
-               <p className="text-[10px] uppercase tracking-widest text-[#B91C1C] font-bold">Catalog Management</p>
+               <h1 className="text-2xl font-heading text-[#121212] uppercase tracking-wide">Edit Product</h1>
+               <p className="text-[9px] uppercase tracking-[0.3em] text-[#C5A059] font-bold">Catalog Management</p>
             </div>
           </div>
           <div className="flex gap-3">
-             <button type="button" onClick={() => router.back()} className="px-6 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest text-gray-500 hover:bg-gray-100 transition">Cancel</button>
-             <button onClick={() => formRef.current?.requestSubmit()} disabled={saving} className="bg-[#B91C1C] text-white px-6 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest flex items-center gap-2 hover:bg-black disabled:opacity-70 transition-all shadow-lg shadow-[#B91C1C]/20">
+             <button type="button" onClick={() => router.back()} className="px-6 py-2.5 rounded-sm text-[10px] font-bold uppercase tracking-widest text-[#57534E] hover:bg-white border border-transparent hover:border-[#E5E5E5] transition-all">Cancel</button>
+             <button onClick={() => formRef.current?.requestSubmit()} disabled={saving} className="bg-[#121212] text-white px-6 py-2.5 rounded-sm text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 hover:bg-[#C5A059] disabled:opacity-70 transition-all shadow-xl">
                {saving ? <Loader2 className="animate-spin" size={16}/> : <Check size={16} />} Save Changes
              </button>
           </div>
@@ -235,178 +243,183 @@ export default function EditProductPage() {
       </div>
 
       {/* --- CONTENT --- */}
-      <div className="max-w-7xl mx-auto p-8">
-        <form ref={formRef} onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="max-w-[1920px] mx-auto p-4 md:p-8">
+        <form ref={formRef} onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          <div className="lg:col-span-2 space-y-8">
+          {/* LEFT COLUMN: Main Details */}
+          <div className="lg:col-span-8 space-y-8">
             {/* DETAILS */}
-            <div className="anim-entry bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
-              <div className="flex items-center gap-3 mb-8 border-b border-gray-100 pb-4">
-                 <Tag size={20} className="text-[#B91C1C]"/>
-                 <h3 className="font-bodoni text-xl text-black">Basic Information</h3>
+            <div className="anim-entry bg-white p-8 rounded-sm shadow-sm border border-[#C5A059]/10">
+              <div className="flex items-center gap-3 mb-8 border-b border-[#C5A059]/10 pb-4">
+                 <Tag size={20} className="text-[#C5A059]"/>
+                 <h3 className="font-heading text-xl text-[#121212] uppercase tracking-wide">Basic Information</h3>
               </div>
               <div className="space-y-6">
                 <div>
-                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Product Name</label>
-                   <input name="name" defaultValue={productData.name} required className="w-full p-4 bg-gray-50 border border-transparent focus:bg-white focus:border-[#B91C1C] rounded-xl text-lg font-medium transition-all outline-none placeholder:text-gray-300" />
+                   <label className="block text-[10px] font-bold text-[#8C8279] uppercase tracking-[0.2em] mb-2">Product Name</label>
+                   <input name="name" defaultValue={productData.name} required className="w-full p-4 bg-[#F9F6F0] border border-transparent focus:bg-white focus:border-[#C5A059] rounded-sm text-lg font-medium transition-all outline-none placeholder:text-[#8C8279]/50" />
                 </div>
                 <div>
-                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">Description</label>
-                   <textarea name="description" defaultValue={productData.description} required rows="6" className="w-full p-4 bg-gray-50 border border-transparent focus:bg-white focus:border-[#B91C1C] rounded-xl text-sm outline-none resize-none placeholder:text-gray-300" />
+                   <label className="block text-[10px] font-bold text-[#8C8279] uppercase tracking-[0.2em] mb-2">Description</label>
+                   <textarea name="description" defaultValue={productData.description} required rows="6" className="w-full p-4 bg-[#F9F6F0] border border-transparent focus:bg-white focus:border-[#C5A059] rounded-sm text-sm outline-none resize-none placeholder:text-[#8C8279]/50" />
                 </div>
               </div>
             </div>
 
             {/* GALLERY */}
-            <div className="anim-entry bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
-              <div className="flex items-center gap-3 mb-8 border-b border-gray-100 pb-4">
-                 <ImageIcon size={20} className="text-[#B91C1C]"/>
-                 <h3 className="font-bodoni text-xl text-black">Visuals</h3>
+            <div className="anim-entry bg-white p-8 rounded-sm shadow-sm border border-[#C5A059]/10">
+              <div className="flex items-center gap-3 mb-8 border-b border-[#C5A059]/10 pb-4">
+                 <ImageIcon size={20} className="text-[#C5A059]"/>
+                 <h3 className="font-heading text-xl text-[#121212] uppercase tracking-wide">Visuals</h3>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="aspect-square relative group cursor-pointer border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center bg-gray-50 hover:border-[#B91C1C] hover:bg-red-50/10 transition-all">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <div className="aspect-square relative group cursor-pointer border border-dashed border-[#C5A059]/40 rounded-sm flex flex-col items-center justify-center bg-[#F9F6F0] hover:border-[#C5A059] hover:bg-white transition-all">
                   <input type="file" multiple accept="image/*" onChange={handleNewImageChange} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
-                  <UploadCloud size={24} className="text-gray-400 mb-2 group-hover:text-[#B91C1C] transition-colors"/>
-                  <span className="text-[10px] font-bold uppercase text-gray-400 group-hover:text-[#B91C1C]">Add New</span>
+                  <div className="p-4 rounded-full bg-white shadow-sm mb-3 group-hover:scale-110 transition-transform text-[#C5A059]">
+                      <UploadCloud size={24}/>
+                  </div>
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-[#8C8279] group-hover:text-[#C5A059]">Add New</span>
                 </div>
+                
                 {/* Optimized Existing Images */}
                 {existingImages.map((url, i) => (
-                    <ExistingImageItem key={`ex-${i}`} url={url} onRemove={() => removeExistingImage(i)} />
+                    <ExistingImageItem key={`ex-${i}`} url={url} index={i} onRemove={removeExistingImage} />
                 ))}
+                
                 {/* Optimized New Images */}
-                {newImages.map((file, i) => (
-                    <ImagePreviewItem key={`new-${i}-${file.name}`} file={file} onRemove={() => removeNewImage(i)} />
-                ))}
+                <AnimatePresence>
+                    {newImages.map((file, i) => (
+                        <ImagePreviewItem key={`new-${i}-${file.name}`} file={file} index={i} onRemove={removeNewImage} />
+                    ))}
+                </AnimatePresence>
               </div>
             </div>
 
             {/* INVENTORY */}
-            <div className="anim-entry bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
-               <div className="flex items-center gap-3 mb-8 border-b border-gray-100 pb-4">
-                  <Barcode size={20} className="text-[#B91C1C]"/>
-                  <h3 className="font-bodoni text-xl text-black">Inventory Codes</h3>
+            <div className="anim-entry bg-white p-8 rounded-sm shadow-sm border border-[#C5A059]/10">
+               <div className="flex items-center gap-3 mb-8 border-b border-[#C5A059]/10 pb-4">
+                  <Barcode size={20} className="text-[#C5A059]"/>
+                  <h3 className="font-heading text-xl text-[#121212] uppercase tracking-wide">Inventory Codes</h3>
                </div>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                  <div>
-                     <label className="flex justify-between text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
-                       SKU <button type="button" className="text-[#B91C1C] hover:underline" onClick={() => setAutoGenSKU(!autoGenSKU)}>{autoGenSKU ? '(Will Regenerate)' : 'Regenerate?'}</button>
+                     <label className="flex justify-between items-end text-[10px] font-bold text-[#8C8279] uppercase tracking-[0.2em] mb-2">
+                       <span>SKU</span> 
+                       <button type="button" className="text-[#C5A059] hover:text-[#121212] tracking-wider transition-colors" onClick={() => setAutoGenSKU(!autoGenSKU)}>{autoGenSKU ? '(Will Regenerate)' : 'Regenerate?'}</button>
                      </label>
-                     <div className={`relative rounded-xl border transition-colors ${autoGenSKU ? 'bg-gray-100 border-gray-200' : 'bg-white border-gray-200 focus-within:border-[#B91C1C]'}`}>
-                        <input name="sku" defaultValue={productData.sku} disabled={autoGenSKU} className="w-full p-4 bg-transparent outline-none text-sm font-mono font-bold text-gray-800 disabled:text-gray-400" placeholder={autoGenSKU ? "Auto-Generating..." : "Custom SKU"} />
-                        {autoGenSKU && <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#B91C1C]"><Check size={16}/></div>}
+                     <div className={`relative rounded-sm border transition-colors ${autoGenSKU ? 'bg-[#F9F6F0] border-[#E5E5E5]' : 'bg-white border-[#E5E5E5] focus-within:border-[#C5A059]'}`}>
+                        <input name="sku" defaultValue={productData.sku} disabled={autoGenSKU} className="w-full p-4 bg-transparent outline-none text-sm font-mono font-bold text-[#121212] disabled:text-[#8C8279]" placeholder={autoGenSKU ? "Auto-Generating..." : "Custom SKU"} />
+                        {autoGenSKU && <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#C5A059]"><Check size={16}/></div>}
                      </div>
                  </div>
                  <div>
-                     <label className="flex justify-between text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
-                       Barcode <button type="button" className="text-[#B91C1C] hover:underline" onClick={() => setAutoGenBarcode(!autoGenBarcode)}>{autoGenBarcode ? '(Will Regenerate)' : 'Regenerate?'}</button>
+                     <label className="flex justify-between items-end text-[10px] font-bold text-[#8C8279] uppercase tracking-[0.2em] mb-2">
+                       <span>Barcode</span> 
+                       <button type="button" className="text-[#C5A059] hover:text-[#121212] tracking-wider transition-colors" onClick={() => setAutoGenBarcode(!autoGenBarcode)}>{autoGenBarcode ? '(Will Regenerate)' : 'Regenerate?'}</button>
                      </label>
-                     <div className={`relative rounded-xl border transition-colors ${autoGenBarcode ? 'bg-gray-100 border-gray-200' : 'bg-white border-gray-200 focus-within:border-[#B91C1C]'}`}>
-                        <input name="barcode" defaultValue={productData.barcode} disabled={autoGenBarcode} className="w-full p-4 bg-transparent outline-none text-sm font-mono font-bold text-gray-800 disabled:text-gray-400" placeholder={autoGenBarcode ? "Auto-Generating..." : "Custom Barcode"} />
-                        {autoGenBarcode && <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#B91C1C]"><Check size={16}/></div>}
+                     <div className={`relative rounded-sm border transition-colors ${autoGenBarcode ? 'bg-[#F9F6F0] border-[#E5E5E5]' : 'bg-white border-[#E5E5E5] focus-within:border-[#C5A059]'}`}>
+                        <input name="barcode" defaultValue={productData.barcode} disabled={autoGenBarcode} className="w-full p-4 bg-transparent outline-none text-sm font-mono font-bold text-[#121212] disabled:text-[#8C8279]" placeholder={autoGenBarcode ? "Auto-Generating..." : "Custom Barcode"} />
+                        {autoGenBarcode && <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[#C5A059]"><Check size={16}/></div>}
                      </div>
                  </div>
                </div>
             </div>
           </div>
 
-          <div className="lg:col-span-1 space-y-8">
-            <div className="anim-entry bg-white p-8 rounded-2xl shadow-sm border border-gray-200">
-              <h3 className="font-bodoni text-xl text-black mb-6">Organization</h3>
+          {/* RIGHT COLUMN: Sidebar Settings */}
+          <div className="lg:col-span-4 space-y-8">
+            <div className="anim-entry bg-white p-8 rounded-sm shadow-sm border border-[#C5A059]/10">
+              <h3 className="font-heading text-xl text-[#121212] uppercase tracking-wide mb-6">Organization</h3>
               <div className="space-y-6">
                 
                 {/* Category */}
                 <div className="relative group">
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 group-focus-within:text-[#B91C1C] transition-colors">Category</label>
+                  <label className="block text-[10px] font-bold text-[#8C8279] uppercase tracking-[0.2em] mb-2 group-focus-within:text-[#C5A059] transition-colors">Category</label>
                   <div className="relative">
-                    <select name="category" className="w-full p-4 bg-gray-50 border border-transparent focus:bg-white focus:border-[#B91C1C] rounded-xl text-sm font-bold outline-none appearance-none cursor-pointer text-gray-800" defaultValue={productData.category?._id || productData.category}>
+                    <select name="category" className="w-full p-4 bg-[#F9F6F0] border border-transparent focus:bg-white focus:border-[#C5A059] rounded-sm text-sm font-bold outline-none appearance-none cursor-pointer text-[#121212]" defaultValue={productData.category?._id || productData.category}>
                       <option value="" disabled>Select Category</option>
                       {flatCategories.map(cat => <option key={cat._id} value={cat._id}>{cat.label}</option>)}
                     </select>
-                    <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400"/>
+                    <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#8C8279]"/>
                   </div>
                 </div>
 
                 {/* Size Guide */}
                 <div className="relative group">
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 group-focus-within:text-[#B91C1C] transition-colors">Size Chart</label>
+                  <label className="block text-[10px] font-bold text-[#8C8279] uppercase tracking-[0.2em] mb-2 group-focus-within:text-[#C5A059] transition-colors">Size Chart</label>
                   <div className="relative">
-                    <select name="sizeGuide" className="w-full p-4 bg-gray-50 border border-transparent focus:bg-white focus:border-[#B91C1C] rounded-xl text-sm font-bold outline-none appearance-none cursor-pointer text-gray-800" defaultValue={productData.sizeGuide?._id || productData.sizeGuide || ""}>
+                    <select name="sizeGuide" className="w-full p-4 bg-[#F9F6F0] border border-transparent focus:bg-white focus:border-[#C5A059] rounded-sm text-sm font-bold outline-none appearance-none cursor-pointer text-[#121212]" defaultValue={productData.sizeGuide?._id || productData.sizeGuide || ""}>
                       <option value="">No Size Guide</option>
                       {sizeGuides.map(guide => <option key={guide._id} value={guide._id}>{guide.name}</option>)}
                     </select>
-                    <Ruler size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400"/>
+                    <Ruler size={16} className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#8C8279]"/>
                   </div>
                 </div>
 
+                <StockVariantManager masterSizes={masterSizes} value={variants} onChange={setVariants} />
+                
+                {/* Tags */}
                 <div>
-                   <StockVariantManager 
-                      masterSizes={masterSizes} 
-                      value={variants} 
-                      onChange={setVariants} 
-                   />
-                </div>
-
-                <div>
-                   <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Tags</label>
+                   <label className="block text-[10px] font-bold text-[#8C8279] uppercase tracking-[0.2em] mb-3">Tags</label>
                    <div className="flex flex-wrap gap-2">
                       {availableTags.map(tag => (
                          <label key={tag._id} className="cursor-pointer group">
                             <input type="checkbox" name="tags" value={tag._id} defaultChecked={productData.tags?.some(t => t._id === tag._id || t === tag._id)} className="peer sr-only"/>
-                            <span className="px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-gray-50 text-gray-500 border border-gray-200 peer-checked:bg-[#B91C1C] peer-checked:text-white peer-checked:border-[#B91C1C] transition-all select-none block group-hover:border-gray-300">
+                            <span className="px-3 py-1.5 rounded-sm text-[9px] font-bold uppercase tracking-[0.1em] bg-[#F9F6F0] text-[#57534E] border border-transparent peer-checked:bg-[#121212] peer-checked:text-white peer-checked:border-[#121212] transition-all select-none block group-hover:border-[#C5A059]">
                                {tag.name}
                             </span>
                          </label>
                       ))}
                    </div>
                 </div>
+
               </div>
             </div>
 
             {/* Pricing Engine */}
-            <div className="anim-entry bg-white p-8 rounded-2xl shadow-sm border border-gray-200 relative overflow-hidden">
-               <div className="absolute top-0 right-0 w-24 h-24 bg-[#B91C1C]/5 rounded-bl-full -mr-8 -mt-8 pointer-events-none"></div>
+            <div className="anim-entry bg-white p-8 rounded-sm shadow-sm border border-[#C5A059]/10 relative overflow-hidden">
+               <div className="absolute top-0 right-0 w-24 h-24 bg-[#C5A059]/5 rounded-bl-full -mr-8 -mt-8 pointer-events-none"></div>
                
                <div className="flex items-center gap-3 mb-6 relative z-10">
-                  <div className="p-2 bg-yellow-50 rounded-lg text-[#D4AF37]">
-                     <Percent size={20} />
+                  <div className="p-2 bg-[#F9F6F0] rounded-sm text-[#C5A059]">
+                     <Percent size={18} />
                   </div>
-                  <h3 className="font-bodoni text-xl text-black">Pricing</h3>
+                  <h3 className="font-heading text-xl text-[#121212] uppercase tracking-wide">Pricing</h3>
                </div>
                
                <div className="space-y-6 relative z-10">
-                  <div>
-                     <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Regular Price</label>
+                 <div>
+                     <label className="block text-[10px] font-bold text-[#8C8279] uppercase tracking-[0.2em] mb-2">Regular Price</label>
                      <div className="relative group">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-black transition-colors"><Taka/></span>
-                        <input name="price" type="number" onWheel={preventScroll} defaultValue={productData.price} required className="w-full pl-10 p-4 bg-gray-50 border border-transparent focus:bg-white focus:border-[#B91C1C] rounded-xl text-lg font-bold outline-none transition-all text-black"/>
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8C8279] group-focus-within:text-[#C5A059] transition-colors"><Taka/></span>
+                        <input name="price" type="number" onWheel={preventScroll} defaultValue={productData.price} required className="w-full pl-10 p-4 bg-[#F9F6F0] border border-transparent focus:bg-white focus:border-[#C5A059] rounded-sm text-lg font-bold outline-none transition-all text-[#121212]"/>
                      </div>
-                  </div>
-                  
-                  <div className="p-5 bg-[#FAFAFA] rounded-xl border border-dashed border-[#D4AF37]/40 relative">
-                     <div className="absolute -top-3 left-4 bg-[#FAFAFA] px-2 text-[10px] font-bold text-[#D4AF37] uppercase tracking-widest">Special Offer</div>
+                 </div>
+                 
+                 <div className="p-5 bg-[#F9F6F0]/50 rounded-sm border border-dashed border-[#C5A059]/30 relative">
+                     <div className="absolute -top-3 left-4 bg-[#F9F6F0] px-2 text-[9px] font-bold text-[#C5A059] uppercase tracking-widest border border-[#C5A059]/10 rounded-sm">Special Offer</div>
                      
                      <div className="space-y-4 pt-2">
                         <div className="relative group">
-                           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400"><Taka/></span>
-                           <input name="discountPrice" type="number" onWheel={preventScroll} defaultValue={productData.discountPrice} placeholder="Sale Price" className="w-full pl-10 p-3 bg-white rounded-lg text-red-600 font-bold outline-none border border-gray-200 focus:border-red-400 focus:ring-2 focus:ring-red-50 transition-all"/>
+                           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#C5A059]"><Taka/></span>
+                           <input name="discountPrice" type="number" onWheel={preventScroll} defaultValue={productData.discountPrice} placeholder="Sale Price" className="w-full pl-10 p-3 bg-white rounded-sm text-[#C5A059] font-bold outline-none border border-[#E5E5E5] focus:border-[#C5A059] transition-all"/>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                            <div className="space-y-1">
-                              <label className="text-[9px] text-gray-400 uppercase font-bold ml-1">Starts</label>
-                              <input name="saleStartDate" type="date" defaultValue={productData.saleStartDate ? new Date(productData.saleStartDate).toISOString().split('T')[0] : ''} className="w-full p-2.5 text-[10px] font-bold text-gray-700 bg-white border border-gray-200 rounded-lg outline-none focus:border-[#D4AF37]"/>
+                              <label className="text-[8px] text-[#8C8279] uppercase tracking-widest font-bold ml-1">Starts</label>
+                              <input name="saleStartDate" type="date" defaultValue={productData.saleStartDate ? new Date(productData.saleStartDate).toISOString().split('T')[0] : ''} className="w-full p-2.5 text-[10px] font-bold text-[#121212] bg-white border border-[#E5E5E5] rounded-sm outline-none focus:border-[#C5A059]"/>
                            </div>
                            <div className="space-y-1">
-                              <label className="text-[9px] text-gray-400 uppercase font-bold ml-1">Ends</label>
-                              <input name="saleEndDate" type="date" defaultValue={productData.saleEndDate ? new Date(productData.saleEndDate).toISOString().split('T')[0] : ''} className="w-full p-2.5 text-[10px] font-bold text-gray-700 bg-white border border-gray-200 rounded-lg outline-none focus:border-[#D4AF37]"/>
+                              <label className="text-[8px] text-[#8C8279] uppercase tracking-widest font-bold ml-1">Ends</label>
+                              <input name="saleEndDate" type="date" defaultValue={productData.saleEndDate ? new Date(productData.saleEndDate).toISOString().split('T')[0] : ''} className="w-full p-2.5 text-[10px] font-bold text-[#121212] bg-white border border-[#E5E5E5] rounded-sm outline-none focus:border-[#C5A059]"/>
                            </div>
                         </div>
                      </div>
-                  </div>
+                 </div>
                </div>
             </div>
 
           </div>
-
         </form>
       </div>
     </div>
