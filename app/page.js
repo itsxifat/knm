@@ -5,23 +5,15 @@ import RecommendedSection from "../components/RecommendedSection";
 import connectDB from "@/lib/db";
 import HeroModel from "@/models/Hero";
 import SiteContent from "@/models/SiteContent";
-import { Suspense } from "react";
-import { Loader2 } from "lucide-react";
 
-// --- PREMIUM SKELETON LOADER ---
-// This shows a sleek gold spinner while heavy sections load in the background
-const SectionLoader = () => (
-  <div className="w-full py-32 flex flex-col items-center justify-center bg-[#F9F6F0]">
-    <Loader2 className="w-8 h-8 animate-spin text-[#C5A059]" />
-    <p className="mt-4 text-[9px] font-bold uppercase tracking-[0.3em] text-[#8C8279]">Loading Collection...</p>
-  </div>
-);
+// ✅ THE ULTIMATE CACHE: This tells Next.js to build the page ONCE and cache it in the CDN for 60 seconds.
+// This means users get a 100% fully rendered HTML page instantly. No loading spinners, no DOM popping in.
+export const revalidate = 60; 
 
 export default async function Home() {
   await connectDB();
   
-  // ✅ OPTIMIZATION: Parallel Fetching
-  // Fires database queries simultaneously instead of waiting for one to finish before starting the next.
+  // Fires database queries simultaneously
   const [siteContent, slides] = await Promise.all([
     SiteContent.findOne({ identifier: 'main_layout' }).lean(),
     HeroModel.find({}).sort({ createdAt: -1 }).lean()
@@ -29,7 +21,7 @@ export default async function Home() {
 
   const navData = {
     logoImage: "/logo.png",
-    logoText: "KNM", // ✅ Rebranded to KNM
+    logoText: "KNM",
     links: siteContent?.navbarLinks ? JSON.parse(JSON.stringify(siteContent.navbarLinks)) : [] 
   };
 
@@ -41,10 +33,9 @@ export default async function Home() {
   }));
 
   return (
-    // ✅ Rebranded to KNM Off-White Background & Custom Selection
     <main className="min-h-screen bg-[#F9F6F0] font-body selection:bg-[#C5A059] selection:text-white">
       
-      {/* Navbar & Hero render instantly because their data is already ready */}
+      {/* Navbar & Hero */}
       <Navbar navData={navData} />
       
       {heroData.length > 0 ? (
@@ -55,17 +46,13 @@ export default async function Home() {
         </div>
       )}
 
-      {/* ✅ OPTIMIZATION: React Suspense Streaming 
-         The server will flush the HTML for the Hero immediately, meaning the user sees the site instantly.
-         These heavier sections will calculate their products and pop into place independently.
+      {/* ✅ OPTIMIZATION: Removed <Suspense>. 
+        Now, Next.js will wait for these sections to fully load their data on the server, 
+        and will send the browser a 100% complete, flawless page. 
+        There will be NO white boxes and NO DOM rendering while scrolling.
       */}
-      <Suspense fallback={<SectionLoader />}>
-        <CategorySection />
-      </Suspense>
-
-      <Suspense fallback={<SectionLoader />}>
-        <RecommendedSection />
-      </Suspense>
+      <CategorySection />
+      <RecommendedSection />
 
     </main>
   );
