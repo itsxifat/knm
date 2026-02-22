@@ -1,9 +1,7 @@
 import './globals.css';
-import 'lenis/dist/lenis.css'; // ✅ Import Lenis CSS
 import { CartProvider } from '@/lib/context/CartContext';
 import SessionProvider from '@/components/SessionProvider';
 import FooterWrapper from '@/components/FooterWrapper';
-import SmoothScrolling from '@/components/SmoothScrolling'; // ✅ Import Wrapper
 import { Toaster } from 'react-hot-toast';
 import { Marcellus, Tenor_Sans, Manrope } from 'next/font/google';
 import Script from 'next/script'; 
@@ -38,8 +36,11 @@ export default function RootLayout({ children }) {
   const gtmServerUrl = process.env.NEXT_PUBLIC_GTM_SERVER_URL;
 
   return (
-    <html lang="en" className={`${marcellus.variable} ${tenor.variable} ${manrope.variable}`}>
-      <body className="antialiased bg-background text-foreground overflow-x-hidden">
+    // ✅ suppressHydrationWarning prevents Next.js errors from GTM/Extensions
+    <html lang="en" suppressHydrationWarning className={`${marcellus.variable} ${tenor.variable} ${manrope.variable}`}>
+      
+      {/* ✅ overflow-x-hidden is removed here to allow native scrolling to work perfectly */}
+      <body className="antialiased bg-background text-foreground">
         
         {/* Google Tag Manager */}
         {gtmId && gtmServerUrl && (
@@ -70,14 +71,12 @@ export default function RootLayout({ children }) {
 
         <SessionProvider>
           <CartProvider>
-            {/* ✅ Wrap App in SmoothScrolling */}
-            <SmoothScrolling>
-              <Toaster position="top-right" reverseOrder={false} />
-              <main className="min-h-screen font-body selection:bg-accent selection:text-white">
-                {children}
-              </main>
-              <FooterWrapper />
-            </SmoothScrolling>
+            {/* ✅ SmoothScrolling wrapper and Lenis CSS imports have been completely removed */}
+            <Toaster position="top-right" reverseOrder={false} />
+            <main className="min-h-screen font-body selection:bg-accent selection:text-white">
+              {children}
+            </main>
+            <FooterWrapper />
           </CartProvider>
         </SessionProvider>
       </body>

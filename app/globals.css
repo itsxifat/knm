@@ -1,39 +1,49 @@
 @import "tailwindcss";
 
-/* --- 1. SMART SCROLLBAR HIDING --- */
-/* Hide scrollbar ONLY for the main body/html (The Lenis Wrapper) */
+/* --- 1. HIDDEN GLOBAL SCROLLBAR --- */
+/* Hide scrollbar ONLY for the main browser window */
 html::-webkit-scrollbar, 
 body::-webkit-scrollbar { 
     display: none; 
 }
+
 html, body { 
-    -ms-overflow-style: none; 
-    scrollbar-width: none; 
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;     /* Firefox */
 }
 
-/* ✅ FIX: Allow scrollbars in Modals, Sidebars, and Admin Panels */
-/* This restores scrolling for any element that explicitly asks for overflow */
+/* Ensure inner scrollable elements (like Modals or Admin Panels) still get a usable premium scrollbar */
+.custom-scrollbar::-webkit-scrollbar,
 .overflow-y-auto::-webkit-scrollbar,
-.overflow-x-auto::-webkit-scrollbar,
-.custom-scrollbar::-webkit-scrollbar {
+.overflow-x-auto::-webkit-scrollbar {
     display: block;
-    width: 6px; /* Thin, premium scrollbar */
+    width: 6px;
     height: 6px;
 }
 
+.custom-scrollbar::-webkit-scrollbar-track,
+.overflow-y-auto::-webkit-scrollbar-track,
+.overflow-x-auto::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb,
 .overflow-y-auto::-webkit-scrollbar-thumb,
-.custom-scrollbar::-webkit-scrollbar-thumb {
+.overflow-x-auto::-webkit-scrollbar-thumb {
     background-color: #E5E5E5;
     border-radius: 4px;
 }
-.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover,
+.overflow-y-auto::-webkit-scrollbar-thumb:hover,
+.overflow-x-auto::-webkit-scrollbar-thumb:hover {
     background-color: #C5A059; /* KNM Gold on hover */
 }
 
-/* --- 2. GLOBAL RENDERING --- */
+/* --- 2. GLOBAL RENDERING & NATIVE SMOOTH SCROLL --- */
 html { 
-  scroll-behavior: auto !important; 
   text-size-adjust: 100%; 
+  scroll-behavior: smooth; /* ✅ ENABLE NATIVE SMOOTH SCROLLING FOR ANCHOR LINKS */
 }
 
 :root {
@@ -54,14 +64,12 @@ body {
   color: var(--foreground);
   font-family: var(--font-body), sans-serif;
   -webkit-font-smoothing: antialiased; 
-  /* ✅ Keep this, but ensure your admin sidebar has 'overscroll-behavior: auto' if needed */
-  overscroll-behavior: none; 
+  -moz-osx-font-smoothing: grayscale; /* ✅ Cleaner font rendering on Mac */
   width: 100%;
   min-height: 100vh;
 }
 
-/* ... (Rest of your CSS: Typography, Gradients, Animations) ... */
-
+/* --- TYPOGRAPHY & UTILITIES --- */
 h1, h2, h3, h4, h5, h6, .font-heading {
   font-family: var(--font-heading), serif;
   letter-spacing: 0.05em;
@@ -74,35 +82,15 @@ h1, h2, h3, h4, h5, h6, .font-heading {
   color: transparent;
 }
 
-/* --- LENIS CONFIG --- */
-html.lenis, html.lenis body {
-  height: auto;
-}
-
-.lenis.lenis-smooth {
-  scroll-behavior: auto !important;
-}
-
-.lenis.lenis-smooth [data-lenis-prevent] {
-  overscroll-behavior: contain;
-}
-
-.lenis.lenis-stopped {
-  overflow: hidden;
-}
-
-.lenis.lenis-scrolling iframe {
-  pointer-events: none;
-}
-
 /* --- MARQUEE ANIMATIONS --- */
+/* Swapped to translate3d to force Hardware (GPU) Acceleration, removing CPU repaints */
 @keyframes scroll-left {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+  0% { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
 }
 @keyframes scroll-right {
-  0% { transform: translateX(-50%); }
-  100% { transform: translateX(0); }
+  0% { transform: translate3d(-50%, 0, 0); }
+  100% { transform: translate3d(0, 0, 0); }
 }
 
 .animate-scroll-left {

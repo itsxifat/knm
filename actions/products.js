@@ -10,12 +10,10 @@ import { revalidatePath } from 'next/cache';
 // --- HELPER: DEEP SERIALIZATION (Fixes "Plain Object" Error) ---
 function serializeProduct(product) {
   if (!product) return null;
-  const p = JSON.parse(JSON.stringify(product)); // Remove functions/buffers
+  const p = JSON.parse(JSON.stringify(product)); 
   
-  // Explicitly fix IDs
   if (p._id) p._id = p._id.toString();
   
-  // Fix Category
   if (p.category) {
     if (typeof p.category === 'object') {
       p.category._id = p.category._id.toString();
@@ -25,12 +23,10 @@ function serializeProduct(product) {
     }
   }
   
-  // Fix Tags
   if (p.tags && Array.isArray(p.tags)) {
     p.tags = p.tags.map(t => (typeof t === 'object' ? { ...t, _id: t._id.toString() } : t.toString()));
   }
 
-  // Fix Variants IDs
   if (p.variants && Array.isArray(p.variants)) {
     p.variants = p.variants.map(v => ({
       ...v,
@@ -38,12 +34,10 @@ function serializeProduct(product) {
     }));
   }
 
-  // Fix SizeGuide ID
   if (p.sizeGuide && typeof p.sizeGuide === 'object') {
     p.sizeGuide._id = p.sizeGuide._id.toString();
   }
 
-  // Fix Reviews
   if (p.reviews && Array.isArray(p.reviews)) {
     p.reviews = p.reviews.map(r => ({
       ...r,
@@ -70,14 +64,18 @@ function generateCode(prefix = "ANQ") {
   return `${prefix}-${randomPart}`;
 }
 
-// --- NEW HELPER: RECURSIVE CATEGORY FETCHER ---
-async function getAllDescendantCategories(parentId) {
+// --- ✅ FIX: OPTIMIZED RECURSIVE CATEGORY FETCHER (Prevents N+1 DB Queries) ---
+async function getAllDescendantCategories(parentId, allCategories = null) {
+  if (!allCategories) {
+    allCategories = await Category.find().lean();
+  }
+  
   let descendants = [];
-  const children = await Category.find({ parent: parentId }).lean();
+  const children = allCategories.filter(c => String(c.parent) === String(parentId));
   
   for (const child of children) {
     descendants.push(child);
-    const nestedChildren = await getAllDescendantCategories(child._id);
+    const nestedChildren = await getAllDescendantCategories(child._id, allCategories);
     descendants = descendants.concat(nestedChildren);
   }
   
@@ -160,8 +158,9 @@ export async function getCategoryPageData(slug, searchParams = {}) {
     const mainCategory = await Category.findOne({ slug }).lean();
     if (!mainCategory) return null;
     
-    // Fetch all sub-categories and their sub-subcategories recursively
-    const allDescendantCategories = await getAllDescendantCategories(mainCategory._id);
+    // ✅ FIX: Fetch all categories once to pass into the recursive function
+    const allCategories = await Category.find().lean();
+    const allDescendantCategories = await getAllDescendantCategories(mainCategory._id, allCategories);
     
     let productFilter = {};
     if (searchParams.search) productFilter.name = { $regex: searchParams.search, $options: 'i' };
@@ -171,12 +170,10 @@ export async function getCategoryPageData(slug, searchParams = {}) {
       if (searchParams.maxPrice) productFilter.price.$lte = Number(searchParams.maxPrice);
     }
 
-    // Process every descendant category into a section
     const sections = await Promise.all(allDescendantCategories.map(async (sub) => {
       let products = await Product.find({ category: sub._id, ...productFilter })
       .limit(12).sort({ createdAt: -1 }).lean();
       
-      // Check Offers
       products = await Promise.all(products.map(checkAndResetOffer));
 
       return { 
@@ -231,7 +228,6 @@ export async function getCategories() {
   return buildTree(categories, null);
 }
 
-// ✅ NEW: Helper to get all categories explicitly (Flat List)
 export async function getAllCategories() {
   await connectDB();
   const categories = await Category.find({}).sort({ name: 1 }).lean();
@@ -261,7 +257,7 @@ export async function getProductHierarchy() {
     const products = await Product.find({ category: cat._id }).select('name price _id').lean();
     return { ...cat, _id: cat._id.toString(), products: products.map(serializeProduct) };
   }));
-  return JSON.parse(JSON.stringify(hierarchy)); // Safety fallback
+  return JSON.parse(JSON.stringify(hierarchy)); 
 }
 
 export async function getAdminProducts() {
@@ -474,18 +470,17 @@ export async function searchProducts(query) {
   }
 }
 
-// ✅ FIX: This is the ONLY definition of getAllProducts
 export async function getAllProducts() {
   await connectDB();
   
   const products = await Product.find({})
     .populate('category', 'name') 
-    .populate('tags') // ✅ THIS IS THE FIX: Now it will fetch { _id, name, color } instead of just the ID string
+    .populate('tags') 
     .sort({ createdAt: -1 })
     .lean();
 
   return {
-    products: products.map(serializeProduct) // Applies deep serialization
+    products: products.map(serializeProduct) 
   };
 }
 
@@ -498,7 +493,6 @@ export async function getProductsBySearch(searchQuery) {
       return [];
   }
 
-  // Create a case-insensitive regex for the search query
   const regex = new RegExp(searchQuery, 'i');
 
   const query = {

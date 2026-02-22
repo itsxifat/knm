@@ -305,8 +305,8 @@ export default function Footer() {
     col1: {
       title: "Quick Links",
       links: [
-        { label: 'About Us', href: '/about-us' },
-        { label: 'Contact Us', href: '/contact-us' },
+        { label: 'About Us', href: '/about' },
+        { label: 'Contact Us', href: '/contact' },
         { label: 'Customer Service', href: '/support' },
       ]
     },
@@ -333,9 +333,9 @@ export default function Footer() {
       
       <Toaster position="top-right" containerStyle={{ zIndex: 999999 }} />
 
-      {/* Texture Overlay Using raw CSS instead of a Tailwind arbitrary URL to prevent build errors */}
+      {/* ✅ OPTIMIZED: Removed mix-blend-overlay. Kept low opacity for zero GPU strain */}
       <div 
-        className="absolute inset-0 opacity-[0.02] pointer-events-none -z-10 mix-blend-overlay"
+        className="absolute inset-0 opacity-[0.03] pointer-events-none z-0"
         style={{ backgroundImage: "url('https://www.transparenttextures.com/patterns/cubes.png')" }}
       />
       
@@ -368,7 +368,7 @@ export default function Footer() {
           <div className="lg:col-span-4 flex flex-col justify-between h-full space-y-8 lg:space-y-0 pr-0 lg:pr-12">
               <div className="space-y-8">
                  <div className="relative w-40 h-16">
-                    <Image src="/logo-knm.png" alt="KNM" fill className="object-contain object-left opacity-90" />
+                    <Image src="/logo-knm.png" alt="KNM" fill sizes="160px" className="object-contain object-left opacity-90" />
                  </div>
                  <p className="text-gray-500 text-xs leading-relaxed max-w-xs font-light">
                     Crafting timeless elegance for the modern gentleman since 2024. A legacy of quality, tradition, and style.
@@ -400,13 +400,15 @@ export default function Footer() {
               </div>
            </div>
            
-           <div className="absolute bottom-[-10%] left-1/2 -translate-x-1/2 w-[90%] md:w-[60%] h-[30vh] opacity-[0.04] pointer-events-none -z-10 select-none grayscale mix-blend-overlay">
+           {/* ✅ OPTIMIZED: Removed grayscale and mix-blend-overlay. Kept opacity only for massive performance gain. */}
+           <div className="absolute bottom-[0%] left-1/2 -translate-x-1/2 w-[90%] md:w-[60%] h-[20vh] opacity-[0.03] pointer-events-none z-0 select-none">
               <Image 
                 src="/logo.png" 
                 alt="KNM" 
                 fill 
                 className="object-contain object-bottom"
                 priority={false}
+                sizes="(max-width: 768px) 90vw, 60vw"
               />
            </div>
         </div>

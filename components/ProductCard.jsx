@@ -27,12 +27,10 @@ const Taka = ({ size = 14, className = "", weight = "bold" }) => (
 // --- AGGRESSIVE SAFE TAG EXTRACTOR ---
 const getValidTagName = (t) => {
   if (!t) return null;
-  // If it's a populated object (checks name, label, or title)
   if (typeof t === 'object') {
       const name = t.name || t.label || t.title;
       if (name) return { name, color: t.color || '#C5A059' };
   }
-  // If it's a raw text string AND NOT a 24-character MongoDB ID
   if (typeof t === 'string' && !/^[a-f\d]{24}$/i.test(t)) {
       return { name: t, color: '#C5A059' };
   }
@@ -56,22 +54,10 @@ export default function ProductCard({ product, priority = false }) {
 
       let calculatedTag = null;
 
-      // 1. Check array: product.tags
-      if (product.tags && product.tags.length > 0) {
-          calculatedTag = getValidTagName(product.tags[0]);
-      }
+      if (product.tags && product.tags.length > 0) calculatedTag = getValidTagName(product.tags[0]);
+      if (!calculatedTag && product.tag) calculatedTag = getValidTagName(product.tag);
+      if (!calculatedTag && saleActive) calculatedTag = { name: "SALE", color: '#C5A059' };
       
-      // 2. Check singular: product.tag (Fallback)
-      if (!calculatedTag && product.tag) {
-          calculatedTag = getValidTagName(product.tag);
-      }
-
-      // 3. Fallback to SALE
-      if (!calculatedTag && saleActive) {
-          calculatedTag = { name: "SALE", color: '#C5A059' };
-      }
-      
-      // 4. Fallback to NEW (Last 30 Days)
       if (!calculatedTag && product.createdAt && new Date(product.createdAt) > new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)) {
           calculatedTag = { name: "NEW", color: '#C5A059' };
       }
@@ -125,20 +111,24 @@ export default function ProductCard({ product, priority = false }) {
         <Link href={`/product/${product.slug}`} className="block w-full h-full" prefetch={false}>
         
         {/* IMAGE CONTAINER */}
-        <div className="relative w-full aspect-3/4 overflow-hidden bg-[#F9F6F0] mb-4 transform-gpu border border-transparent group-hover:border-[#C5A059]/20 transition-colors duration-500">
+        {/* ✅ FIX: Removed 'transform-gpu' to prevent VRAM exhaustion on low-end devices */}
+        <div className="relative w-full aspect-[3/4] overflow-hidden bg-[#F9F6F0] mb-4 border border-transparent group-hover:border-[#C5A059]/20 transition-colors duration-500">
             <Image 
                 src={product.images?.[0] || '/placeholder.jpg'} alt={product.name} fill priority={priority}
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                className="object-cover transition-transform duration-[1.5s] ease-out transform-gpu group-hover:scale-105"
-                decoding="async" quality={90}
+                // ✅ FIX: Removed 'transform-gpu' here as well. Let the browser handle simple scale natively.
+                className="object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-105"
+                // ✅ FIX: Dropped quality to 80 (perfect for grids, saves massive memory)
+                decoding="async" quality={80}
             />
-            <div className={`absolute inset-0 bg-black/0 transition-colors duration-500 pointer-events-none ${showSizes ? 'bg-black/20' : 'group-hover:bg-black/5'}`}></div>
+            <div className={`absolute inset-0 transition-colors duration-500 pointer-events-none ${showSizes ? 'bg-black/20' : 'bg-black/0 group-hover:bg-black/5'}`}></div>
 
             {/* TAG */}
             {tagData && (
                 <div className="absolute top-0 left-0 p-3 z-10 pointer-events-none">
+                    {/* ✅ FIX: Removed expensive 'backdrop-blur-md' */}
                     <span 
-                        className="backdrop-blur-md px-3 py-1.5 text-[9px] md:text-[10px] font-bold uppercase tracking-widest shadow-sm"
+                        className="px-3 py-1.5 text-[9px] md:text-[10px] font-bold uppercase tracking-widest shadow-sm"
                         style={{
                            backgroundColor: tagData.name === 'SALE' ? '#C5A059' : 'rgba(255,255,255,0.95)',
                            color: tagData.name === 'SALE' ? 'white' : (tagData.color || '#C5A059')
@@ -154,7 +144,8 @@ export default function ProductCard({ product, priority = false }) {
                 {showSizes && (
                     <motion.div 
                         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                        className="absolute inset-x-0 bottom-0 p-4 bg-white/95 backdrop-blur-xl border-t border-[#C5A059]/20 z-30 flex flex-col items-center gap-3 cursor-default"
+                        // ✅ FIX: Removed expensive 'backdrop-blur-xl', replaced with solid 'bg-white/98'
+                        className="absolute inset-x-0 bottom-0 p-4 bg-white/98 border-t border-[#C5A059]/20 z-30 flex flex-col items-center gap-3 cursor-default"
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} 
                     >
                           <div className="flex justify-between items-center w-full mb-1">

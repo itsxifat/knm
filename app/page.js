@@ -2,8 +2,6 @@ import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import CategorySection from "@/components/CategorySection"; 
 import RecommendedSection from "../components/RecommendedSection"; 
-import SectionRenderer from '@/components/sections/SectionRenderer';
-import { getHomepageSections } from '@/actions/sectionActions';
 import connectDB from "@/lib/db";
 import HeroModel from "@/models/Hero";
 import SiteContent from "@/models/SiteContent";
@@ -23,11 +21,10 @@ export default async function Home() {
   await connectDB();
   
   // ✅ OPTIMIZATION: Parallel Fetching
-  // Fires all three database queries simultaneously instead of waiting for one to finish before starting the next.
-  const [siteContent, slides, sections] = await Promise.all([
+  // Fires database queries simultaneously instead of waiting for one to finish before starting the next.
+  const [siteContent, slides] = await Promise.all([
     SiteContent.findOne({ identifier: 'main_layout' }).lean(),
-    HeroModel.find({}).sort({ createdAt: -1 }).lean(),
-    getHomepageSections()
+    HeroModel.find({}).sort({ createdAt: -1 }).lean()
   ]);
 
   const navData = {
@@ -68,10 +65,6 @@ export default async function Home() {
 
       <Suspense fallback={<SectionLoader />}>
         <RecommendedSection />
-      </Suspense>
-
-      <Suspense fallback={<SectionLoader />}>
-        <SectionRenderer sections={sections} />
       </Suspense>
 
     </main>

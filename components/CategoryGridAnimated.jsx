@@ -21,9 +21,10 @@ const cardVariants = {
 };
 
 // --- CARD COMPONENT ---
-const CategoryCard = ({ category, priority = false }) => {
+const CategoryCard = ({ category, index, priority = false }) => {
   return (
     <motion.div
+      custom={index} // ✅ FIX: Added custom={index} so the delay stagger works properly
       variants={cardVariants}
       initial="hidden"
       whileInView="visible"
@@ -45,7 +46,8 @@ const CategoryCard = ({ category, priority = false }) => {
               sizes="(max-width: 768px) 70vw, (max-width: 1200px) 33vw, 25vw"
               // ✅ FIX: Async decoding prevents UI freeze during scroll
               decoding="async"
-              className="object-cover transition-transform duration-[1.2s] ease-out will-change-transform group-hover:scale-105 opacity-95 group-hover:opacity-100"
+              // ✅ FIX: Removed 'will-change-transform' to stop GPU memory leaks, replaced with 'transform-gpu'
+              className="object-cover transition-transform duration-[1.2s] ease-out transform-gpu group-hover:scale-105 opacity-95 group-hover:opacity-100"
               quality={85} 
             />
           ) : (
@@ -68,7 +70,8 @@ const CategoryCard = ({ category, priority = false }) => {
 
            {/* Title & Line */}
            <div className="transform transition-transform duration-500 ease-out md:translate-y-2 md:group-hover:translate-y-0">
-              <h3 className="font-heading font-normal text-xl md:text-2xl text-white uppercase tracking-wider leading-none mb-3 drop-shadow-lg">
+              {/* ✅ FIX: Replaced expensive 'drop-shadow-lg' with hardware-accelerated 'text-shadow' */}
+              <h3 className="font-heading font-normal text-xl md:text-2xl text-white uppercase tracking-wider leading-none mb-3 [text-shadow:_0_2px_4px_rgba(0,0,0,0.5)]">
                 {category.name}
               </h3>
               {/* Gold Line Animation */}
