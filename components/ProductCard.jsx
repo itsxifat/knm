@@ -37,7 +37,8 @@ const getValidTagName = (t) => {
   return null;
 };
 
-export default function ProductCard({ product, priority = false }) {
+// ✅ OPTIMIZED: Changed default priority to true to kill lazy-loading white flashes everywhere
+export default function ProductCard({ product, priority = true }) {
   const [showSizes, setShowSizes] = useState(false);
   const [status, setStatus] = useState('idle'); 
   const { addToCart } = useCart(); 
@@ -116,12 +117,10 @@ export default function ProductCard({ product, priority = false }) {
                 src={product.images?.[0] || '/placeholder.jpg'} 
                 alt={product.name} 
                 fill 
-                priority={priority}
+                priority={priority} // ✅ Now defaults to TRUE to force eager loading
                 sizes="(max-width: 640px) 70vw, (max-width: 1024px) 33vw, 25vw"
                 className="object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-105"
                 quality={80}
-                // ✅ OPTIMIZED: Removed 'decoding="async"'. 
-                // This forces the browser to paint the image atomically with the layout, stopping the white boxes from appearing during fast scrolls.
             />
             <div className={`absolute inset-0 transition-colors duration-500 pointer-events-none ${showSizes ? 'bg-black/20' : 'bg-black/0 group-hover:bg-black/5'}`}></div>
 
