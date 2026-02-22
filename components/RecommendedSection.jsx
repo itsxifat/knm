@@ -35,25 +35,22 @@ export default async function RecommendedSection() {
 
         {/* --- DESKTOP GRID --- */}
         <div className="hidden lg:grid grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-16">
-          {products.map((product, index) => (
+          {products.map((product) => (
              <div key={product._id} className="w-full h-full">
+                 {/* ✅ FIX: Forced priority={true} for ALL recommended products. 
+                     No more lazy-loading white flashes on desktop when scrolling down. */}
                  <ProductCard 
                     product={product} 
-                    // ✅ OPTIMIZED: Eager load the top row so it caches instantly into RAM
-                    priority={index < 5} 
+                    priority={true} 
                  />
              </div>
           ))}
         </div>
 
         {/* --- MOBILE SCROLL --- */}
-        <div 
-          className="lg:hidden flex overflow-x-auto snap-x snap-mandatory gap-4 pb-8 custom-scrollbar px-4 -mx-4"
-        >
+        <div className="lg:hidden flex overflow-x-auto snap-x snap-mandatory gap-4 pb-8 custom-scrollbar px-4 -mx-4">
           {products.map((product) => (
             <div key={product._id} className="snap-start min-w-[65vw] w-[75vw] sm:w-[45vw] shrink-0">
-               {/* ✅ OPTIMIZED: Horizontal carousels MUST have priority=true. 
-                   This forces the browser to download and cache them instantly, stopping the white flash when swiping. */}
                <ProductCard product={product} priority={true} />
             </div>
           ))}
