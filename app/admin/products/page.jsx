@@ -1,14 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image'; // ✅ Next.js Image for optimization
+import Image from 'next/image'; 
 import { 
   Plus, Trash2, Package, Search, Edit3, 
   Filter, X, Check, Tag as TagIcon, MoreHorizontal,
   ChevronDown, Calendar, AlertCircle, Layers, Image as ImageIcon,
   Loader2
 } from 'lucide-react';
-import { getAdminProducts, deleteProduct, getCategories, getTags, updateProductTags } from '@/actions/products'; // Adjust path if needed
+import { getAdminProducts, deleteProduct, getCategories, getTags, updateProductTags } from '@/actions/products'; 
 import { useEffect, useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -40,8 +40,10 @@ const QuickTagModal = ({ product, availableTags, onClose, onUpdate }) => {
 
   const handleSave = async () => {
     setSaving(true);
+    // 1. Sync with server
     await updateProductTags(product._id, selectedTags);
-    await onUpdate();
+    // 2. Update local cache instantly (Zero Loading)
+    onUpdate(product._id, selectedTags);
     onClose();
   };
 
@@ -91,7 +93,7 @@ export default function AdminProductsPage() {
   // Filter States
   const [showFilters, setShowFilters] = useState(false);
   const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState(''); // ✅ OPTIMIZATION: Debounce State
+  const [debouncedSearch, setDebouncedSearch] = useState(''); 
   const [filterCat, setFilterCat] = useState('');
   const [filterTag, setFilterTag] = useState('');
   const [filterStock, setFilterStock] = useState('all'); 
@@ -100,7 +102,7 @@ export default function AdminProductsPage() {
   // Modal State
   const [tagModalProduct, setTagModalProduct] = useState(null);
 
-  // Load Data
+  // Load Data Once on Mount
   const loadData = async () => {
     setLoading(true);
     const [prods, cats, tgs] = await Promise.all([
@@ -116,7 +118,7 @@ export default function AdminProductsPage() {
 
   useEffect(() => { loadData(); }, []);
 
-  // ✅ OPTIMIZATION: Debounce the search input to prevent UI freezing
+  // Debounce Search
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(search);
@@ -127,37 +129,40 @@ export default function AdminProductsPage() {
   // --- FILTER LOGIC ---
   const filteredProducts = useMemo(() => {
     return products.filter(p => {
-      // 1. Search (Uses Debounced Search)
       const q = debouncedSearch.toLowerCase();
       const matchesSearch = !q || 
           p.name.toLowerCase().includes(q) || 
           (p.sku && p.sku.toLowerCase().includes(q)) || 
           (p.barcode && p.barcode.toLowerCase().includes(q));
 
-      // 2. Category
       const matchesCat = !filterCat || p.category?._id === filterCat;
-
-      // 3. Tag
       const matchesTag = !filterTag || p.tags?.some(t => t._id === filterTag);
 
-      // 4. Stock
       let matchesStock = true;
       if (filterStock === 'in') matchesStock = p.stock > 0;
       if (filterStock === 'out') matchesStock = p.stock === 0;
 
-      // 5. Price
       const matchesMinPrice = !priceRange.min || p.price >= Number(priceRange.min);
       const matchesMaxPrice = !priceRange.max || p.price <= Number(priceRange.max);
 
       return matchesSearch && matchesCat && matchesTag && matchesStock && matchesMinPrice && matchesMaxPrice;
     });
-  }, [products, debouncedSearch, filterCat, filterTag, filterStock, priceRange]); // ✅ Depends on debouncedSearch
+  }, [products, debouncedSearch, filterCat, filterTag, filterStock, priceRange]);
 
+  // ✅ OPTIMIZATION: Optimistic Delete Caching
   const handleDelete = async (id) => {
     if (confirm('Permanently delete this product?')) {
+      // Instantly remove from UI memory
+      setProducts(prev => prev.filter(p => p._id !== id));
+      // Delete in background
       await deleteProduct(id);
-      loadData(); 
     }
+  };
+
+  // ✅ OPTIMIZATION: Optimistic Tag Update Caching
+  const handleTagUpdate = (productId, selectedTagIds) => {
+    const updatedTags = tags.filter(t => selectedTagIds.includes(t._id));
+    setProducts(prev => prev.map(p => p._id === productId ? { ...p, tags: updatedTags } : p));
   };
 
   return (
@@ -258,7 +263,8 @@ export default function AdminProductsPage() {
         {/* MOBILE VIEW (Cards) */}
         <div className="md:hidden divide-y divide-gray-100">
            {loading ? <div className="p-12 text-center"><Loader2 className="w-8 h-8 text-[#C5A059] animate-spin mx-auto"/></div> : filteredProducts.map(product => (
-              <div key={product._id} className="p-5 flex gap-4 hover:bg-[#F9F6F0] transition-colors [content-visibility:auto]">
+              // ✅ OPTIMIZED: Removed [content-visibility:auto] to fix layout thrashing & white flash lag
+              <div key={product._id} className="p-5 flex gap-4 hover:bg-[#F9F6F0] transition-colors">
                  <div className="w-20 h-24 bg-[#F9F6F0] rounded-sm overflow-hidden flex-shrink-0 border border-[#C5A059]/10 relative">
                     {product.images?.[0] ? (
                        <Image src={product.images[0]} alt={product.name} fill className="object-cover" sizes="80px" />
@@ -312,7 +318,8 @@ export default function AdminProductsPage() {
                 </tr>
               ) : (
                 filteredProducts.map((product) => (
-                  <tr key={product._id} className="group hover:bg-[#F9F6F0]/50 transition-colors [content-visibility:auto]">
+                  // ✅ OPTIMIZED: Removed [content-visibility:auto] to fix layout thrashing & white flash lag
+                  <tr key={product._id} className="group hover:bg-[#F9F6F0]/50 transition-colors">
                     
                     {/* 1. Identity */}
                     <td className="p-6 pl-8">
@@ -407,7 +414,7 @@ export default function AdminProductsPage() {
             product={tagModalProduct} 
             availableTags={tags} 
             onClose={() => setTagModalProduct(null)} 
-            onUpdate={loadData}
+            onUpdate={handleTagUpdate} // ✅ OPTIMIZED: Passes data back to cache instead of refetching db
          />
       )}
 

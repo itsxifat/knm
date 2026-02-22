@@ -12,9 +12,9 @@ export default async function CategorySection() {
   const displayCategories = allCategories.slice(0, 12);
 
   return (
-    // ✅ FIX: Added [content-visibility:auto] and [contain-intrinsic-size]
-    // This prevents the scrollbar from jumping and renders the section in the background.
-    <section className="py-20 md:py-32 bg-white relative font-body selection:bg-[#C5A059] selection:text-white [content-visibility:auto] [contain-intrinsic-size:1px_1200px]">
+    // ✅ OPTIMIZED: Removed [content-visibility:auto] and [contain-intrinsic-size].
+    // The browser now natively caches the painted pixels in memory, eliminating white flashes.
+    <section className="py-20 md:py-32 bg-[#F9F6F0] relative font-body selection:bg-[#C5A059] selection:text-white">
       <div className="max-w-[1920px] mx-auto px-6 md:px-12 2xl:px-20">
         
         {/* --- HEADER --- */}

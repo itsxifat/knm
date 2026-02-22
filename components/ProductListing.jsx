@@ -8,7 +8,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { Filter, ChevronDown, LayoutGrid, List, X, Search, RefreshCw, XCircle } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import ProductCard from '@/components/ProductCard'; // ✅ Importing your pre-built component
+import ProductCard from '@/components/ProductCard'; 
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger);
@@ -43,7 +43,7 @@ const FilterOption = ({ label, count, active, onClick }) => (
 
 const ProductSkeleton = () => (
   <div className="flex flex-col gap-2 animate-pulse">
-    <div className="aspect-3/4 bg-[#F5F2EA] w-full relative overflow-hidden">
+    <div className="aspect-[3/4] bg-[#F5F2EA] w-full relative overflow-hidden">
       <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/60 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
     </div>
     <div className="h-2 bg-[#F5F2EA] w-2/3 mx-auto" />
@@ -249,9 +249,9 @@ export default function ProductListing({ initialProducts, initialSearch = '' }) 
             <div className="relative group">
                <button onClick={() => setIsSortOpen(!isSortOpen)} className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] hover:text-[#C5A059] transition text-[#121212]">Sort <ChevronDown size={12} /></button>
                <div className={`absolute top-full right-0 mt-5 w-48 bg-white shadow-xl border border-[#C5A059]/10 py-2 z-50 transition-all ${isSortOpen ? 'opacity-100 scale-100' : 'opacity-0 scale-95 pointer-events-none'}`}>
-                  {[{l:'Newest Arrivals',v:'newest'},{l:'Price: Low to High',v:'priceAsc'},{l:'Price: High to Low',v:'priceDesc'}].map((opt) => (
-                      <button key={opt.v} onClick={() => { setSortOption(opt.v); setIsSortOpen(false); }} className={`w-full text-left px-5 py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-[#F9F6F0] ${sortOption === opt.v ? 'text-[#C5A059]' : 'text-[#57534E]'}`}>{opt.l}</button>
-                  ))}
+                 {[{l:'Newest Arrivals',v:'newest'},{l:'Price: Low to High',v:'priceAsc'},{l:'Price: High to Low',v:'priceDesc'}].map((opt) => (
+                     <button key={opt.v} onClick={() => { setSortOption(opt.v); setIsSortOpen(false); }} className={`w-full text-left px-5 py-3 text-[10px] font-bold uppercase tracking-widest hover:bg-[#F9F6F0] ${sortOption === opt.v ? 'text-[#C5A059]' : 'text-[#57534E]'}`}>{opt.l}</button>
+                 ))}
                </div>
             </div>
             <div className="hidden md:flex items-center gap-4 border-l border-[#E5E5E5] pl-8">
@@ -270,14 +270,14 @@ export default function ProductListing({ initialProducts, initialSearch = '' }) 
           </div>
         ) : processedData.length > 0 ? (
           <div className={
+            // ✅ OPTIMIZED: Removed [content-visibility:auto] to fix layout thrashing & white flash lag
             viewMode === 'grid' 
-              ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-3 gap-y-10 md:gap-x-6 md:gap-y-14 lg:gap-x-8 lg:gap-y-20 [content-visibility:auto]' 
-              : 'flex flex-col gap-8 max-w-5xl mx-auto [content-visibility:auto]' // Added gap for list view
+              ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-3 gap-y-10 md:gap-x-6 md:gap-y-14 lg:gap-x-8 lg:gap-y-20' 
+              : 'flex flex-col gap-8 max-w-5xl mx-auto' 
           }>
             {processedData.map((product) => (
-               <div key={product._id} className={`product-item ${viewMode === 'list' ? 'w-full max-w-150 mx-auto border-b border-[#F5F2EA] pb-8' : ''}`}>
-                  {/* ✅ Using the standard ProductCard */}
-                  <ProductCard product={product} />
+               <div key={product._id} className={`product-item ${viewMode === 'list' ? 'w-full max-w-[150px] mx-auto border-b border-[#F5F2EA] pb-8' : ''}`}>
+                 <ProductCard product={product} />
                </div>
             ))}
           </div>
