@@ -17,7 +17,7 @@ export default async function RecommendedSection() {
 
   return (
     <section className="py-20 md:py-32 bg-[#F9F6F0] border-t border-[#C5A059]/10 overflow-hidden font-body selection:bg-[#C5A059] selection:text-white">
-      <div className="max-w-480 mx-auto px-4 md:px-8">
+      <div className="max-w-[1920px] mx-auto px-4 md:px-8">
         
         {/* --- HEADER --- */}
         <div className="text-center mb-12 md:mb-16 relative">
@@ -35,25 +35,26 @@ export default async function RecommendedSection() {
 
         {/* --- DESKTOP GRID --- */}
         <div className="hidden lg:grid grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-16">
-          {products.map((product) => (
+          {products.map((product, index) => (
              <div key={product._id} className="w-full h-full">
                  <ProductCard 
                     product={product} 
-                    priority={false} 
+                    // ✅ OPTIMIZED: Eager load the top row so it caches instantly into RAM
+                    priority={index < 5} 
                  />
              </div>
           ))}
         </div>
 
         {/* --- MOBILE SCROLL --- */}
-        {/* ✅ FIX: Added data-lenis-prevent="true" to stop Lenis from lagging the horizontal scroll */}
         <div 
-          data-lenis-prevent="true"
           className="lg:hidden flex overflow-x-auto snap-x snap-mandatory gap-4 pb-8 custom-scrollbar px-4 -mx-4"
         >
           {products.map((product) => (
             <div key={product._id} className="snap-start min-w-[65vw] w-[75vw] sm:w-[45vw] shrink-0">
-               <ProductCard product={product} priority={false} />
+               {/* ✅ OPTIMIZED: Horizontal carousels MUST have priority=true. 
+                   This forces the browser to download and cache them instantly, stopping the white flash when swiping. */}
+               <ProductCard product={product} priority={true} />
             </div>
           ))}
           <div className="w-4 shrink-0" aria-hidden="true" />

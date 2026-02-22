@@ -111,22 +111,23 @@ export default function ProductCard({ product, priority = false }) {
         <Link href={`/product/${product.slug}`} className="block w-full h-full" prefetch={false}>
         
         {/* IMAGE CONTAINER */}
-        {/* ✅ FIX: Removed 'transform-gpu' to prevent VRAM exhaustion on low-end devices */}
         <div className="relative w-full aspect-[3/4] overflow-hidden bg-[#F9F6F0] mb-4 border border-transparent group-hover:border-[#C5A059]/20 transition-colors duration-500">
             <Image 
-                src={product.images?.[0] || '/placeholder.jpg'} alt={product.name} fill priority={priority}
-                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                // ✅ FIX: Removed 'transform-gpu' here as well. Let the browser handle simple scale natively.
+                src={product.images?.[0] || '/placeholder.jpg'} 
+                alt={product.name} 
+                fill 
+                priority={priority}
+                sizes="(max-width: 640px) 70vw, (max-width: 1024px) 33vw, 25vw"
                 className="object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-105"
-                // ✅ FIX: Dropped quality to 80 (perfect for grids, saves massive memory)
-                decoding="async" quality={80}
+                quality={80}
+                // ✅ OPTIMIZED: Removed 'decoding="async"'. 
+                // This forces the browser to paint the image atomically with the layout, stopping the white boxes from appearing during fast scrolls.
             />
             <div className={`absolute inset-0 transition-colors duration-500 pointer-events-none ${showSizes ? 'bg-black/20' : 'bg-black/0 group-hover:bg-black/5'}`}></div>
 
             {/* TAG */}
             {tagData && (
                 <div className="absolute top-0 left-0 p-3 z-10 pointer-events-none">
-                    {/* ✅ FIX: Removed expensive 'backdrop-blur-md' */}
                     <span 
                         className="px-3 py-1.5 text-[9px] md:text-[10px] font-bold uppercase tracking-widest shadow-sm"
                         style={{
@@ -144,7 +145,6 @@ export default function ProductCard({ product, priority = false }) {
                 {showSizes && (
                     <motion.div 
                         initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                        // ✅ FIX: Removed expensive 'backdrop-blur-xl', replaced with solid 'bg-white/98'
                         className="absolute inset-x-0 bottom-0 p-4 bg-white/98 border-t border-[#C5A059]/20 z-30 flex flex-col items-center gap-3 cursor-default"
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} 
                     >
