@@ -6,215 +6,295 @@ import Image from 'next/image';
 import { ShoppingBag, X, Check, AlertCircle } from 'lucide-react';
 import { useCart } from '@/lib/context/CartContext';
 
-// --- OPTIMIZATION: Extract Formatter ---
+// ----------------------------------------------------------------------------
+// HELPERS
+// ----------------------------------------------------------------------------
+
 const priceFormatter = new Intl.NumberFormat('en-BD', {
   style: 'decimal',
   minimumFractionDigits: 0,
 });
 
-// --- CUSTOM TAKA ICON ---
-const Taka = ({ size = 14, className = "", weight = "bold" }) => (
-  <svg 
-    width={size} height={size+2} viewBox="0 0 24 24" fill="none" 
-    xmlns="http://www.w3.org/2000/svg" className={`inline-block ${className}`}
-    style={{ verticalAlign: 'middle', transform: 'translateY(-1px)' }} 
+const Taka = ({ size = 14, className = '', weight = 'bold' }) => (
+  <svg
+    width={size}
+    height={size + 2}
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={`inline-block ${className}`}
+    style={{ verticalAlign: 'middle', transform: 'translateY(-1px)' }}
   >
-    <text x="50%" y="58%" dominantBaseline="middle" textAnchor="middle" fontSize="22" fontWeight={weight === 'bold' ? 'bold' : 'normal'} fill="currentColor" style={{ fontFamily: "'Bodoni Moda', serif" }}>৳</text>
+    <text
+      x="50%"
+      y="58%"
+      dominantBaseline="middle"
+      textAnchor="middle"
+      fontSize="22"
+      fontWeight={weight === 'bold' ? 'bold' : 'normal'}
+      fill="currentColor"
+      style={{ fontFamily: "'Bodoni Moda', serif" }}
+    >
+      ৳
+    </text>
   </svg>
 );
 
-// --- AGGRESSIVE SAFE TAG EXTRACTOR ---
 const getValidTagName = (t) => {
   if (!t) return null;
   if (typeof t === 'object') {
-      const name = t.name || t.label || t.title;
-      if (name) return { name, color: t.color || '#C5A059' };
+    const name = t.name || t.label || t.title;
+    if (name) return { name, color: t.color || '#C5A059' };
   }
   if (typeof t === 'string' && !/^[a-f\d]{24}$/i.test(t)) {
-      return { name: t, color: '#C5A059' };
+    return { name: t, color: '#C5A059' };
   }
   return null;
 };
 
-// ✅ OPTIMIZED: Changed default priority to true to kill lazy-loading white flashes
-export default function ProductCard({ product, priority = true }) {
+// ----------------------------------------------------------------------------
+// COMPONENT
+// ----------------------------------------------------------------------------
+
+// FIX: Default priority changed to FALSE — setting true on every card preloads
+// ALL images simultaneously, killing scroll performance and wasting bandwidth.
+// Pass priority={true} only for the first ~5 cards (above the fold) from the parent.
+export default function ProductCard({ product, priority = false }) {
   const [showSizes, setShowSizes] = useState(false);
-  const [status, setStatus] = useState('idle'); 
-  const { addToCart } = useCart(); 
+  const [status, setStatus] = useState('idle');
+  const { addToCart } = useCart();
 
-  // --- MEMOIZED LOGIC ---
+  // FIX: Compute `now` once outside memo so it doesn't recreate on every evaluation
+  const now = useMemo(() => new Date(), []);
+
   const { isSaleActive, currentPrice, originalPrice, tagData } = useMemo(() => {
-      if (!product) return {};
-      
-      const now = new Date();
-      const saleActive = product.discountPrice && 
-        product.discountPrice < product.price &&
-        (!product.saleStartDate || new Date(product.saleStartDate) <= now) &&
-        (!product.saleEndDate || new Date(product.saleEndDate) >= now);
+    if (!product) return {};
 
-      let calculatedTag = null;
+    const saleActive =
+      product.discountPrice &&
+      product.discountPrice < product.price &&
+      (!product.saleStartDate || new Date(product.saleStartDate) <= now) &&
+      (!product.saleEndDate || new Date(product.saleEndDate) >= now);
 
-      if (product.tags && product.tags.length > 0) calculatedTag = getValidTagName(product.tags[0]);
-      if (!calculatedTag && product.tag) calculatedTag = getValidTagName(product.tag);
-      if (!calculatedTag && saleActive) calculatedTag = { name: "SALE", color: '#C5A059' };
-      
-      if (!calculatedTag && product.createdAt && new Date(product.createdAt) > new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)) {
-          calculatedTag = { name: "NEW", color: '#C5A059' };
-      }
+    let calculatedTag = null;
 
-      return {
-          isSaleActive: saleActive,
-          currentPrice: saleActive ? product.discountPrice : product.price,
-          originalPrice: saleActive ? product.price : null,
-          tagData: calculatedTag
-      };
-  }, [product]);
+    if (product.tags?.length > 0) calculatedTag = getValidTagName(product.tags[0]);
+    if (!calculatedTag && product.tag) calculatedTag = getValidTagName(product.tag);
+    if (!calculatedTag && saleActive) calculatedTag = { name: 'SALE', color: '#C5A059' };
+    if (
+      !calculatedTag &&
+      product.createdAt &&
+      new Date(product.createdAt) > new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+    ) {
+      calculatedTag = { name: 'NEW', color: '#C5A059' };
+    }
+
+    return {
+      isSaleActive: saleActive,
+      currentPrice: saleActive ? product.discountPrice : product.price,
+      originalPrice: saleActive ? product.price : null,
+      tagData: calculatedTag,
+    };
+  }, [product, now]);
 
   if (!product) return null;
+
   const format = (num) => priceFormatter.format(num || 0);
 
-  // --- ADD TO CART HANDLER ---
-  const handleAddToCart = useCallback((selectedVariant = null) => {
-    try {
+  // FIX: Wrapped repeated handlers in useCallback to prevent recreation on every render
+  const handleAddToCart = useCallback(
+    (selectedVariant = null) => {
+      try {
         const stockToCheck = selectedVariant ? selectedVariant.stock : product.stock;
         if (stockToCheck <= 0) {
-            setStatus('error');
-            setTimeout(() => setStatus('idle'), 2000);
-            return;
+          setStatus('error');
+          setTimeout(() => setStatus('idle'), 2000);
+          return;
         }
-        const sizeToAdd = selectedVariant ? selectedVariant.size : null;
-        addToCart(product, 1, sizeToAdd);
+        addToCart(product, 1, selectedVariant?.size ?? null);
         setStatus('success');
         setTimeout(() => {
-            setStatus('idle');
-            setShowSizes(false);
+          setStatus('idle');
+          setShowSizes(false);
         }, 1500);
-    } catch (error) {
-        console.error("Add to cart failed:", error);
+      } catch (error) {
+        console.error('Add to cart failed:', error);
         setStatus('error');
-    }
-  }, [product, addToCart]);
+      }
+    },
+    [product, addToCart]
+  );
 
-  const handleCartClick = (e) => {
-    e.preventDefault(); e.stopPropagation();
-    if (product.variants && product.variants.length > 0) setShowSizes(!showSizes);
-    else handleAddToCart(null); 
-  };
+  const handleCartClick = useCallback(
+    (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (product.variants?.length > 0) setShowSizes((prev) => !prev);
+      else handleAddToCart(null);
+    },
+    [product.variants, handleAddToCart]
+  );
 
-  const handleSizeSelect = (e, variant) => {
-    e.preventDefault(); e.stopPropagation();
-    handleAddToCart(variant);
-  };
+  const handleSizeSelect = useCallback(
+    (e, variant) => {
+      e.preventDefault();
+      e.stopPropagation();
+      handleAddToCart(variant);
+    },
+    [handleAddToCart]
+  );
+
+  const handleCloseSizes = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowSizes(false);
+  }, []);
+
+  const handleOverlayClick = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const isOutOfStock =
+    product.stock <= 0 && (!product.variants || product.variants.length === 0);
 
   return (
     <div className="product-card group block w-full h-full relative">
-        <Link href={`/product/${product.slug}`} className="block w-full h-full" prefetch={false}>
-        
+      <Link href={`/product/${product.slug}`} className="block w-full h-full" prefetch={false}>
+
         {/* IMAGE CONTAINER */}
         <div className="relative w-full aspect-[3/4] overflow-hidden bg-[#F9F6F0] mb-4 border border-transparent group-hover:border-[#C5A059]/20 transition-colors duration-500">
-            <Image 
-                src={product.images?.[0] || '/placeholder.jpg'} 
-                alt={product.name} 
-                fill 
-                priority={priority}
-                sizes="(max-width: 640px) 70vw, (max-width: 1024px) 33vw, 25vw"
-                className="object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-105"
-                quality={80}
-            />
-            <div className={`absolute inset-0 transition-colors duration-500 pointer-events-none ${showSizes ? 'bg-black/20' : 'bg-black/0 group-hover:bg-black/5'}`}></div>
+          <Image
+            src={product.images?.[0] || '/placeholder.jpg'}
+            alt={product.name}
+            fill
+            priority={priority}
+            // FIX: Corrected sizes for 5-column grid — was 25vw, actual col width is ~20vw
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+            className="object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-105"
+            quality={80}
+          />
+          <div
+            className={`absolute inset-0 transition-colors duration-500 pointer-events-none ${
+              showSizes ? 'bg-black/20' : 'bg-black/0 group-hover:bg-black/5'
+            }`}
+          />
 
-            {/* TAG */}
-            {tagData && (
-                <div className="absolute top-0 left-0 p-3 z-10 pointer-events-none">
-                    <span 
-                        className="px-3 py-1.5 text-[9px] md:text-[10px] font-bold uppercase tracking-widest shadow-sm"
-                        style={{
-                           backgroundColor: tagData.name === 'SALE' ? '#C5A059' : 'rgba(255,255,255,0.95)',
-                           color: tagData.name === 'SALE' ? 'white' : (tagData.color || '#C5A059')
-                        }}
-                    >
-                        {tagData.name}
-                    </span>
-                </div>
-            )}
-
-            {/* --- SIZE SELECTOR OVERLAY (100% Native DOM, No Framer Motion) --- */}
-            {showSizes && (
-                <div 
-                    className="absolute inset-x-0 bottom-0 p-4 bg-white/98 border-t border-[#C5A059]/20 z-30 flex flex-col items-center gap-3 cursor-default shadow-[0_-10px_30px_rgba(0,0,0,0.05)]"
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} 
-                >
-                      <div className="flex justify-between items-center w-full mb-1">
-                         <span className="text-[10px] font-bold uppercase text-[#57534E] tracking-widest">Select Size</span>
-                         <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowSizes(false); }} className="text-[#8C8279] hover:text-[#C5A059]">
-                             <X size={14} />
-                         </button>
-                      </div>
-                      
-                      {status === 'success' ? (
-                         <div className="w-full py-2 bg-green-50 text-green-700 text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 rounded-sm border border-green-200">
-                            <Check size={14} /> Added
-                         </div>
-                      ) : status === 'error' ? (
-                         <div className="w-full py-2 bg-red-50 text-red-700 text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 rounded-sm border border-red-200">
-                            <AlertCircle size={14} /> No Stock
-                         </div>
-                      ) : (
-                         <div className="flex flex-wrap gap-2 justify-center w-full">
-                             {product.variants?.map((variant) => (
-                                 <button
-                                     key={`${variant.size}-${variant._id || 'v'}`} 
-                                     onClick={(e) => handleSizeSelect(e, variant)} disabled={variant.stock <= 0}
-                                     className={`h-8 min-w-9 px-2 text-[10px] font-bold border transition-colors duration-200 ${variant.stock > 0 ? 'border-gray-200 hover:border-[#C5A059] hover:bg-[#C5A059] hover:text-white text-[#121212]' : 'border-gray-100 text-gray-300 cursor-not-allowed line-through bg-gray-50'}`}
-                                 >
-                                      {variant.size}
-                                 </button>
-                             ))}
-                         </div>
-                      )}
-                </div>
-            )}
-
-            {/* --- QUICK ADD BUTTON --- */}
-            {!showSizes && (
-                <div className="absolute bottom-4 right-4 z-20 md:translate-y-4 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 transition-all duration-500 ease-out">
-                    <button 
-                        onClick={handleCartClick} disabled={product.stock <= 0 && (!product.variants || product.variants.length === 0)}
-                        className={`bg-white text-[#121212] w-10 h-10 flex items-center justify-center hover:bg-[#C5A059] hover:text-white transition-colors shadow-xl border border-gray-100 ${status === 'success' ? 'bg-green-600! text-white! border-green-600!' : ''}`}
-                        aria-label="Add to Cart"
-                    >
-                         {status === 'success' ? <Check size={16} /> : <ShoppingBag size={16} strokeWidth={1.5} />}
-                    </button>
-                </div>
-            )}
-        </div>
-
-        {/* INFO */}
-        <div className="px-1 flex flex-col gap-1.5">
-            <h3 className="font-heading font-normal text-sm text-[#121212] truncate group-hover:text-[#C5A059] transition-colors tracking-wide">
-                {product.name}
-            </h3>
-
-            <div className="flex items-end justify-between min-h-9">
-                <p className="text-[10px] font-medium text-[#8C8279] uppercase tracking-widest truncate max-w-[55%] mb-1">
-                    {product.category?.name || "Collection"}
-                </p>
-                
-                <div className="flex flex-col items-end leading-none">
-                    {isSaleActive && (
-                        <div className="flex items-center gap-px text-[10px] text-[#8C8279] line-through decoration-[#8C8279] mb-1">
-                            <Taka size={9} weight="normal" className="text-[#8C8279]" />
-                            <span>{format(originalPrice)}</span>
-                        </div>
-                    )}
-                    <div className={`flex items-center gap-0.5 font-heading font-bold ${isSaleActive ? 'text-[#C5A059] text-sm' : 'text-[#121212] text-sm'}`}>
-                        <Taka size={14} weight="bold" />
-                        <span>{format(currentPrice)}</span>
-                    </div>
-                </div>
+          {/* TAG */}
+          {tagData && (
+            <div className="absolute top-0 left-0 p-3 z-10 pointer-events-none">
+              <span
+                className="px-3 py-1.5 text-[9px] md:text-[10px] font-bold uppercase tracking-widest shadow-sm"
+                style={{
+                  backgroundColor:
+                    tagData.name === 'SALE' ? '#C5A059' : 'rgba(255,255,255,0.95)',
+                  color: tagData.name === 'SALE' ? 'white' : tagData.color || '#C5A059',
+                }}
+              >
+                {tagData.name}
+              </span>
             </div>
+          )}
+
+          {/* SIZE SELECTOR OVERLAY */}
+          {showSizes && (
+            <div
+              className="absolute inset-x-0 bottom-0 p-4 bg-white/98 border-t border-[#C5A059]/20 z-30 flex flex-col items-center gap-3 cursor-default shadow-[0_-10px_30px_rgba(0,0,0,0.05)]"
+              onClick={handleOverlayClick}
+            >
+              <div className="flex justify-between items-center w-full mb-1">
+                <span className="text-[10px] font-bold uppercase text-[#57534E] tracking-widest">
+                  Select Size
+                </span>
+                <button onClick={handleCloseSizes} className="text-[#8C8279] hover:text-[#C5A059]">
+                  <X size={14} />
+                </button>
+              </div>
+
+              {status === 'success' ? (
+                <div className="w-full py-2 bg-green-50 text-green-700 text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 rounded-sm border border-green-200">
+                  <Check size={14} /> Added
+                </div>
+              ) : status === 'error' ? (
+                <div className="w-full py-2 bg-red-50 text-red-700 text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 rounded-sm border border-red-200">
+                  <AlertCircle size={14} /> No Stock
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2 justify-center w-full">
+                  {product.variants?.map((variant) => (
+                    <button
+                      key={`${variant.size}-${variant._id || 'v'}`}
+                      onClick={(e) => handleSizeSelect(e, variant)}
+                      disabled={variant.stock <= 0}
+                      className={`h-8 min-w-9 px-2 text-[10px] font-bold border transition-colors duration-200 ${
+                        variant.stock > 0
+                          ? 'border-gray-200 hover:border-[#C5A059] hover:bg-[#C5A059] hover:text-white text-[#121212]'
+                          : 'border-gray-100 text-gray-300 cursor-not-allowed line-through bg-gray-50'
+                      }`}
+                    >
+                      {variant.size}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* QUICK ADD BUTTON */}
+          {!showSizes && (
+            <div className="absolute bottom-4 right-4 z-20 md:translate-y-4 md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 transition-all duration-500 ease-out">
+              <button
+                onClick={handleCartClick}
+                disabled={isOutOfStock}
+                // FIX: Corrected Tailwind !important modifier — suffix `!` doesn't work,
+                // must be prefix `!bg-green-600` not `bg-green-600!`
+                className={`w-10 h-10 flex items-center justify-center transition-colors shadow-xl border ${
+                  status === 'success'
+                    ? '!bg-green-600 !text-white !border-green-600'
+                    : 'bg-white text-[#121212] hover:bg-[#C5A059] hover:text-white border-gray-100'
+                }`}
+                aria-label="Add to Cart"
+              >
+                {status === 'success' ? (
+                  <Check size={16} />
+                ) : (
+                  <ShoppingBag size={16} strokeWidth={1.5} />
+                )}
+              </button>
+            </div>
+          )}
         </div>
-        </Link>
+
+        {/* PRODUCT INFO */}
+        <div className="px-1 flex flex-col gap-1.5">
+          <h3 className="font-heading font-normal text-sm text-[#121212] truncate group-hover:text-[#C5A059] transition-colors tracking-wide">
+            {product.name}
+          </h3>
+
+          <div className="flex items-end justify-between min-h-9">
+            <p className="text-[10px] font-medium text-[#8C8279] uppercase tracking-widest truncate max-w-[55%] mb-1">
+              {product.category?.name || 'Collection'}
+            </p>
+
+            <div className="flex flex-col items-end leading-none">
+              {isSaleActive && (
+                <div className="flex items-center gap-px text-[10px] text-[#8C8279] line-through decoration-[#8C8279] mb-1">
+                  <Taka size={9} weight="normal" className="text-[#8C8279]" />
+                  <span>{format(originalPrice)}</span>
+                </div>
+              )}
+              <div
+                className={`flex items-center gap-0.5 font-heading font-bold text-sm ${
+                  isSaleActive ? 'text-[#C5A059]' : 'text-[#121212]'
+                }`}
+              >
+                <Taka size={14} weight="bold" />
+                <span>{format(currentPrice)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Link>
     </div>
   );
 }
