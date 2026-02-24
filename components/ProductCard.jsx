@@ -4,7 +4,6 @@ import React, { useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ShoppingBag, X, Check, AlertCircle } from 'lucide-react';
-import { AnimatePresence, motion } from 'framer-motion';
 import { useCart } from '@/lib/context/CartContext';
 
 // --- OPTIMIZATION: Extract Formatter ---
@@ -37,7 +36,7 @@ const getValidTagName = (t) => {
   return null;
 };
 
-// ✅ OPTIMIZED: Changed default priority to true to kill lazy-loading white flashes everywhere
+// ✅ OPTIMIZED: Changed default priority to true to kill lazy-loading white flashes
 export default function ProductCard({ product, priority = true }) {
   const [showSizes, setShowSizes] = useState(false);
   const [status, setStatus] = useState('idle'); 
@@ -117,7 +116,7 @@ export default function ProductCard({ product, priority = true }) {
                 src={product.images?.[0] || '/placeholder.jpg'} 
                 alt={product.name} 
                 fill 
-                priority={priority} // ✅ Now defaults to TRUE to force eager loading
+                priority={priority}
                 sizes="(max-width: 640px) 70vw, (max-width: 1024px) 33vw, 25vw"
                 className="object-cover transition-transform duration-[1.5s] ease-out group-hover:scale-105"
                 quality={80}
@@ -139,45 +138,42 @@ export default function ProductCard({ product, priority = true }) {
                 </div>
             )}
 
-            {/* --- SIZE SELECTOR OVERLAY --- */}
-            <AnimatePresence>
-                {showSizes && (
-                    <motion.div 
-                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                        className="absolute inset-x-0 bottom-0 p-4 bg-white/98 border-t border-[#C5A059]/20 z-30 flex flex-col items-center gap-3 cursor-default"
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} 
-                    >
-                          <div className="flex justify-between items-center w-full mb-1">
-                             <span className="text-[10px] font-bold uppercase text-[#57534E] tracking-widest">Select Size</span>
-                             <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowSizes(false); }} className="text-[#8C8279] hover:text-[#C5A059]">
-                                 <X size={14} />
-                             </button>
-                          </div>
-                          
-                          {status === 'success' ? (
-                             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="w-full py-2 bg-green-50 text-green-700 text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 rounded-sm border border-green-200">
-                                <Check size={14} /> Added
-                             </motion.div>
-                          ) : status === 'error' ? (
-                             <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="w-full py-2 bg-red-50 text-red-700 text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 rounded-sm border border-red-200">
-                                <AlertCircle size={14} /> No Stock
-                             </motion.div>
-                          ) : (
-                             <div className="flex flex-wrap gap-2 justify-center w-full">
-                                 {product.variants?.map((variant) => (
-                                     <button
-                                         key={`${variant.size}-${variant._id || 'v'}`} 
-                                         onClick={(e) => handleSizeSelect(e, variant)} disabled={variant.stock <= 0}
-                                         className={`h-8 min-w-9 px-2 text-[10px] font-bold border transition-all duration-300 ${variant.stock > 0 ? 'border-gray-200 hover:border-[#C5A059] hover:bg-[#C5A059] hover:text-white text-[#121212]' : 'border-gray-100 text-gray-300 cursor-not-allowed line-through bg-gray-50'}`}
-                                     >
-                                          {variant.size}
-                                     </button>
-                                 ))}
-                             </div>
-                          )}
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {/* --- SIZE SELECTOR OVERLAY (100% Native DOM, No Framer Motion) --- */}
+            {showSizes && (
+                <div 
+                    className="absolute inset-x-0 bottom-0 p-4 bg-white/98 border-t border-[#C5A059]/20 z-30 flex flex-col items-center gap-3 cursor-default shadow-[0_-10px_30px_rgba(0,0,0,0.05)]"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} 
+                >
+                      <div className="flex justify-between items-center w-full mb-1">
+                         <span className="text-[10px] font-bold uppercase text-[#57534E] tracking-widest">Select Size</span>
+                         <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowSizes(false); }} className="text-[#8C8279] hover:text-[#C5A059]">
+                             <X size={14} />
+                         </button>
+                      </div>
+                      
+                      {status === 'success' ? (
+                         <div className="w-full py-2 bg-green-50 text-green-700 text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 rounded-sm border border-green-200">
+                            <Check size={14} /> Added
+                         </div>
+                      ) : status === 'error' ? (
+                         <div className="w-full py-2 bg-red-50 text-red-700 text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 rounded-sm border border-red-200">
+                            <AlertCircle size={14} /> No Stock
+                         </div>
+                      ) : (
+                         <div className="flex flex-wrap gap-2 justify-center w-full">
+                             {product.variants?.map((variant) => (
+                                 <button
+                                     key={`${variant.size}-${variant._id || 'v'}`} 
+                                     onClick={(e) => handleSizeSelect(e, variant)} disabled={variant.stock <= 0}
+                                     className={`h-8 min-w-9 px-2 text-[10px] font-bold border transition-colors duration-200 ${variant.stock > 0 ? 'border-gray-200 hover:border-[#C5A059] hover:bg-[#C5A059] hover:text-white text-[#121212]' : 'border-gray-100 text-gray-300 cursor-not-allowed line-through bg-gray-50'}`}
+                                 >
+                                      {variant.size}
+                                 </button>
+                             ))}
+                         </div>
+                      )}
+                </div>
+            )}
 
             {/* --- QUICK ADD BUTTON --- */}
             {!showSizes && (

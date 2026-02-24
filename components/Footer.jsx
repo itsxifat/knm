@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Toaster, toast } from 'react-hot-toast';
 import { requestAppointment } from '@/actions/appointment';
 import { parsePhoneNumberFromString } from 'libphonenumber-js';
@@ -58,14 +57,7 @@ const premiumToast = {
   })
 };
 
-// --- ANIMATION VARIANTS ---
-const modalVariants = {
-  hidden: { opacity: 0, scale: 0.95, y: 20 },
-  visible: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } }, 
-  exit: { opacity: 0, scale: 0.95, y: 10, transition: { duration: 0.2 } }
-};
-
-// --- HIGH-PERFORMANCE COUNTRY SELECTOR ---
+// --- HIGH-PERFORMANCE COUNTRY SELECTOR (Pure CSS Transitions) ---
 const CountrySelector = ({ selectedIso, onChange }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -121,15 +113,9 @@ const CountrySelector = ({ selectedIso, onChange }) => {
         <ChevronDown size={10} className={`transition-transform duration-300 ml-auto ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            transition={{ duration: 0.2 }} 
-            className="absolute top-full left-0 z-50 w-64 bg-[#0a2118] border border-[#C5A059]/20 shadow-2xl mt-2 flex flex-col h-[280px]" 
-          >
+      {/* ✅ OPTIMIZED: Native CSS Dropdown */}
+      {isOpen && (
+         <div className="absolute top-full left-0 z-50 w-64 bg-[#0a2118] border border-[#C5A059]/20 shadow-2xl mt-2 flex flex-col h-[280px] animate-in fade-in slide-in-from-top-2 duration-200">
             <div className="p-2 border-b border-white/10 shrink-0 bg-[#0a2118] z-10">
               <div className="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-sm border border-white/10">
                 <Search size={12} className="text-gray-500 shrink-0" />
@@ -168,9 +154,8 @@ const CountrySelector = ({ selectedIso, onChange }) => {
                 <div className="p-4 text-center text-[10px] text-gray-600">No country found.</div>
               )}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+         </div>
+      )}
     </div>
   );
 };
@@ -199,17 +184,16 @@ const InputGroup = ({ label, type, value, onChange, required, children }) => (
   </div>
 );
 
-// --- SOCIAL BUTTON ---
+// --- SOCIAL BUTTON (Pure CSS Transition) ---
 const SocialButton = ({ icon: Icon, href }) => (
-  <motion.a 
+  <a 
     href={href}
     target="_blank"
     rel="noopener noreferrer"
-    whileHover={{ scale: 1.05, backgroundColor: '#C5A059', color: '#041610', borderColor: '#C5A059' }}
-    className="w-10 h-10 rounded-sm border border-[#C5A059]/30 flex items-center justify-center text-[#C5A059] hover:text-[#041610] cursor-pointer transition-colors duration-300 bg-white/5"
+    className="w-10 h-10 rounded-sm border border-[#C5A059]/30 flex items-center justify-center text-[#C5A059] hover:bg-[#C5A059] hover:text-[#041610] hover:scale-105 hover:border-[#C5A059] cursor-pointer transition-all duration-300 bg-white/5"
   >
     <Icon size={18} strokeWidth={1.5} />
-  </motion.a>
+  </a>
 );
 
 // --- FOOTER LINKS COLUMN ---
@@ -333,7 +317,7 @@ export default function Footer() {
       
       <Toaster position="top-right" containerStyle={{ zIndex: 999999 }} />
 
-      {/* ✅ OPTIMIZED: Removed mix-blend-overlay. Kept low opacity for zero GPU strain */}
+      {/* Texture Overlay */}
       <div 
         className="absolute inset-0 opacity-[0.03] pointer-events-none z-0"
         style={{ backgroundImage: "url('https://www.transparenttextures.com/patterns/cubes.png')" }}
@@ -400,7 +384,6 @@ export default function Footer() {
               </div>
            </div>
            
-           {/* ✅ OPTIMIZED: Removed grayscale and mix-blend-overlay. Kept opacity only for massive performance gain. */}
            <div className="absolute bottom-[0%] left-1/2 -translate-x-1/2 w-[90%] md:w-[60%] h-[20vh] opacity-[0.03] pointer-events-none z-0 select-none">
               <Image 
                 src="/logo.png" 
@@ -414,101 +397,98 @@ export default function Footer() {
         </div>
       </div>
 
-      <AnimatePresence>
-        {isModalOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            
-            <motion.div 
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setIsModalOpen(false)}
-              className="absolute inset-0 bg-[#000000]/90 backdrop-blur-md"
-            />
-            
-            <motion.div 
-              variants={modalVariants} initial="hidden" animate="visible" exit="exit"
-              className="relative w-full max-w-2xl bg-[#0a2118] border border-[#C5A059]/20 shadow-2xl flex flex-col max-h-[90vh]"
-            >
+      {/* ✅ OPTIMIZED: Native CSS Modal (No Framer Motion) */}
+      <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 transition-all duration-300 ${isModalOpen ? 'visible' : 'invisible pointer-events-none'}`}>
+        
+        {/* Backdrop */}
+        <div 
+           className={`absolute inset-0 bg-[#000000]/90 backdrop-blur-md transition-opacity duration-300 ${isModalOpen ? 'opacity-100' : 'opacity-0'}`}
+           onClick={() => setIsModalOpen(false)}
+        />
+        
+        {/* Modal Window */}
+        <div 
+           className={`relative w-full max-w-2xl bg-[#0a2118] border border-[#C5A059]/20 shadow-2xl flex flex-col max-h-[90vh] transition-all duration-300 ease-out transform ${isModalOpen ? 'scale-100 translate-y-0 opacity-100' : 'scale-95 translate-y-4 opacity-0'}`}
+        >
+          
+          <div className="flex items-center justify-between p-6 md:p-8 border-b border-[#C5A059]/20 bg-[#0a2118] z-10 shrink-0">
+            <div>
+              <h3 className="font-heading text-2xl md:text-3xl text-white uppercase tracking-tight">Book Appointment</h3>
+              <div className="flex gap-6 mt-3">
+                <span className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gray-400"><MapPin size={12} className="text-[#C5A059]"/> Banani & Gulshan</span>
+                <span className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gray-400"><Clock size={12} className="text-[#C5A059]"/> 10am - 8pm</span>
+              </div>
+            </div>
+            <button onClick={() => setIsModalOpen(false)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors border border-white/5">
+              <X size={20} className="text-[#C5A059]"/>
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar bg-[#061812]">
+            <form onSubmit={handleSubmit} className="space-y-8">
               
-              <div className="flex items-center justify-between p-6 md:p-8 border-b border-[#C5A059]/20 bg-[#0a2118] z-10 shrink-0">
-                <div>
-                  <h3 className="font-heading text-2xl md:text-3xl text-white uppercase tracking-tight">Book Appointment</h3>
-                  <div className="flex gap-6 mt-3">
-                    <span className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gray-400"><MapPin size={12} className="text-[#C5A059]"/> Banani & Gulshan</span>
-                    <span className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gray-400"><Clock size={12} className="text-[#C5A059]"/> 10am - 8pm</span>
-                  </div>
-                </div>
-                <button onClick={() => setIsModalOpen(false)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/10 transition-colors border border-white/5">
-                  <X size={20} className="text-[#C5A059]"/>
-                </button>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <InputGroup label="Full Name" type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
+                <InputGroup label="Company (Optional)" type="text" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} />
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 md:p-10 custom-scrollbar bg-[#061812]">
-                <form onSubmit={handleSubmit} className="space-y-8">
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <InputGroup label="Full Name" type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
-                    <InputGroup label="Company (Optional)" type="text" value={formData.company} onChange={e => setFormData({...formData, company: e.target.value})} />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <InputGroup label="Phone Number" required value={formData.phone}>
-                      <div className="flex items-center w-full border-b border-white/10">
-                        <CountrySelector selectedIso={countryCode} onChange={setCountryCode} />
-                        <input 
-                          type="tel" 
-                          value={formData.phone} 
-                          onChange={e => setFormData({...formData, phone: e.target.value})} 
-                          className="w-full bg-transparent py-3 pl-4 text-sm font-body text-white outline-none placeholder-transparent border-none focus:ring-0"
-                          placeholder=" "
-                        />
-                      </div>
-                    </InputGroup>
-                    <InputGroup label="Email Address" type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <InputGroup label="WhatsApp (Optional)" type="tel" value={formData.whatsapp} onChange={e => setFormData({...formData, whatsapp: e.target.value})} />
-                    <InputGroup label="Location Preference">
-                      <select 
-                        value={formData.store} onChange={e => setFormData({...formData, store: e.target.value})} 
-                        className="peer w-full bg-transparent border-b border-white/10 py-3 text-sm font-body text-white focus:border-[#C5A059] outline-none rounded-none cursor-pointer appearance-none"
-                      >
-                        <option className="bg-[#0a2118]" value="Banani Flagship">Banani Flagship</option>
-                        <option className="bg-[#0a2118]" value="Gulshan Gallery">Gulshan Gallery</option>
-                      </select>
-                    </InputGroup>
-                  </div>
-
-                  <InputGroup label="Subject" type="text" value={formData.subject} onChange={e => setFormData({...formData, subject: e.target.value})} required />
-
-                  <div className="group relative pt-6">
-                    <textarea 
-                      value={formData.details} onChange={e => setFormData({...formData, details: e.target.value})} 
-                      className="peer w-full bg-transparent border-b border-white/10 py-3 text-sm font-body text-white focus:border-[#C5A059] outline-none transition-all resize-none h-24 placeholder-transparent"
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <InputGroup label="Phone Number" required value={formData.phone}>
+                  <div className="flex items-center w-full border-b border-white/10">
+                    <CountrySelector selectedIso={countryCode} onChange={setCountryCode} />
+                    <input 
+                      type="tel" 
+                      value={formData.phone} 
+                      onChange={e => setFormData({...formData, phone: e.target.value})} 
+                      className="w-full bg-transparent py-3 pl-4 text-sm font-body text-white outline-none placeholder-transparent border-none focus:ring-0"
                       placeholder=" "
                     />
-                    <label className={`absolute left-0 top-0 text-[10px] uppercase tracking-[0.15em] text-gray-500 transition-all duration-300 pointer-events-none 
-                      peer-focus:text-[#C5A059] peer-not-placeholder-shown:text-[#C5A059] peer-focus:-top-1
-                      ${formData.details ? 'text-[#C5A059] -top-1' : ''}
-                    `}>
-                      Additional Details
-                    </label>
                   </div>
-
-                  <button 
-                    disabled={loading} 
-                    type="submit" 
-                    className="w-full bg-[#C5A059] text-[#041610] py-5 text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-white transition-colors duration-500 flex items-center justify-center gap-3 mt-6 shadow-[0_0_20px_rgba(197,160,89,0.1)]"
-                  >
-                    {loading ? "Processing..." : <>Confirm Request <Send size={14}/></>}
-                  </button>
-
-                </form>
+                </InputGroup>
+                <InputGroup label="Email Address" type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required />
               </div>
-            </motion.div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <InputGroup label="WhatsApp (Optional)" type="tel" value={formData.whatsapp} onChange={e => setFormData({...formData, whatsapp: e.target.value})} />
+                <InputGroup label="Location Preference">
+                  <select 
+                    value={formData.store} onChange={e => setFormData({...formData, store: e.target.value})} 
+                    className="peer w-full bg-transparent border-b border-white/10 py-3 text-sm font-body text-white focus:border-[#C5A059] outline-none rounded-none cursor-pointer appearance-none"
+                  >
+                    <option className="bg-[#0a2118]" value="Banani Flagship">Banani Flagship</option>
+                    <option className="bg-[#0a2118]" value="Gulshan Gallery">Gulshan Gallery</option>
+                  </select>
+                </InputGroup>
+              </div>
+
+              <InputGroup label="Subject" type="text" value={formData.subject} onChange={e => setFormData({...formData, subject: e.target.value})} required />
+
+              <div className="group relative pt-6">
+                <textarea 
+                  value={formData.details} onChange={e => setFormData({...formData, details: e.target.value})} 
+                  className="peer w-full bg-transparent border-b border-white/10 py-3 text-sm font-body text-white focus:border-[#C5A059] outline-none transition-all resize-none h-24 placeholder-transparent"
+                  placeholder=" "
+                />
+                <label className={`absolute left-0 top-0 text-[10px] uppercase tracking-[0.15em] text-gray-500 transition-all duration-300 pointer-events-none 
+                  peer-focus:text-[#C5A059] peer-not-placeholder-shown:text-[#C5A059] peer-focus:-top-1
+                  ${formData.details ? 'text-[#C5A059] -top-1' : ''}
+                `}>
+                  Additional Details
+                </label>
+              </div>
+
+              <button 
+                disabled={loading} 
+                type="submit" 
+                className="w-full bg-[#C5A059] text-[#041610] py-5 text-[10px] font-bold uppercase tracking-[0.3em] hover:bg-white transition-colors duration-500 flex items-center justify-center gap-3 mt-6 shadow-[0_0_20px_rgba(197,160,89,0.1)]"
+              >
+                {loading ? "Processing..." : <>Confirm Request <Send size={14}/></>}
+              </button>
+
+            </form>
           </div>
-        )}
-      </AnimatePresence>
+        </div>
+      </div>
     </footer>
   );
 }
