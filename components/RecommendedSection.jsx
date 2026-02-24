@@ -16,14 +16,16 @@ export default async function RecommendedSection() {
   if (!products || products.length === 0) return null;
 
   return (
-    <section className="py-20 md:py-32 bg-[#F9F6F0] border-t border-[#C5A059]/10 overflow-hidden font-body selection:bg-[#C5A059] selection:text-white">
+    // ✅ FIX 1: Removed 'overflow-hidden'. 
+    // This stops the browser from constantly recalculating clipping boundaries during scroll.
+    <section className="py-20 md:py-32 bg-[#F9F6F0] border-t border-[#C5A059]/10 font-body selection:bg-[#C5A059] selection:text-white">
       <div className="max-w-[1920px] mx-auto px-4 md:px-8">
         
         {/* --- HEADER --- */}
         <div className="text-center mb-12 md:mb-16 relative">
            <div className="absolute top-1/2 left-0 w-full h-px bg-[#C5A059]/20 -z-10 hidden md:block"></div>
            
-           <div className="inline-block bg-[#F9F6F0] px-6 md:px-8 relative">
+           <div className="inline-block bg-[#F9F6F0] px-6 md:px-8 relative z-10">
               <span className="text-[#C5A059] font-bold uppercase tracking-[0.3em] text-[9px] md:text-[10px] block mb-2 md:mb-3">
                  Just For You
               </span>
@@ -37,8 +39,6 @@ export default async function RecommendedSection() {
         <div className="hidden lg:grid grid-cols-4 xl:grid-cols-5 gap-x-6 gap-y-16">
           {products.map((product) => (
              <div key={product._id} className="w-full h-full">
-                 {/* ✅ FIX: Forced priority={true} for ALL recommended products. 
-                     No more lazy-loading white flashes on desktop when scrolling down. */}
                  <ProductCard 
                     product={product} 
                     priority={true} 
@@ -48,7 +48,13 @@ export default async function RecommendedSection() {
         </div>
 
         {/* --- MOBILE SCROLL --- */}
-        <div className="lg:hidden flex overflow-x-auto snap-x snap-mandatory gap-4 pb-8 custom-scrollbar px-4 -mx-4">
+        {/* ✅ FIX 2: Added 'transform-gpu' and translate3d style. 
+            This forces iOS/Android to lock this entire slider into a single 3D graphics layer. 
+            It will never unload the off-screen cards, completely stopping the white flash when swiping. */}
+        <div 
+          className="lg:hidden flex overflow-x-auto snap-x snap-mandatory gap-4 pb-8 custom-scrollbar px-4 -mx-4 transform-gpu"
+          style={{ WebkitTransform: 'translate3d(0, 0, 0)', WebkitOverflowScrolling: 'touch' }}
+        >
           {products.map((product) => (
             <div key={product._id} className="snap-start min-w-[65vw] w-[75vw] sm:w-[45vw] shrink-0">
                <ProductCard product={product} priority={true} />
