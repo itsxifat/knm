@@ -34,11 +34,23 @@ const FilterOption = ({ label, count, active, onClick }) => (
   </button>
 );
 
+// Shimmer runs as a pure CSS animation — zero JS on scroll
 const ProductSkeleton = () => (
-  <div className="flex flex-col gap-2 animate-pulse">
-    <div className="aspect-[3/4] bg-[#F5F2EA] w-full" />
-    <div className="h-2 bg-[#F5F2EA] w-2/3 mx-auto" />
-    <div className="h-2 bg-[#F5F2EA] w-1/3 mx-auto" />
+  <div className="flex flex-col gap-3">
+    <div className="aspect-[3/4] bg-[#F5F2EA] w-full relative overflow-hidden rounded-none">
+      <div className="skeleton-shimmer absolute inset-0" />
+    </div>
+    <div className="px-1 space-y-2">
+      <div className="h-2.5 bg-[#F0EDE6] w-3/4 relative overflow-hidden">
+        <div className="skeleton-shimmer absolute inset-0" />
+      </div>
+      <div className="h-2 bg-[#F0EDE6] w-1/2 relative overflow-hidden">
+        <div className="skeleton-shimmer absolute inset-0" />
+      </div>
+      <div className="h-3 bg-[#F0EDE6] w-1/3 mt-1 relative overflow-hidden">
+        <div className="skeleton-shimmer absolute inset-0" />
+      </div>
+    </div>
   </div>
 );
 
@@ -61,10 +73,18 @@ export default function ProductListing({ initialProducts, initialSearch = '' }) 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isSortOpen, setIsSortOpen] = useState(false);
 
+  // FIX: isMounted starts false — server renders nothing (avoids hydration mismatch),
+  // client immediately shows skeletons, then real cards appear after one paint.
+  // This replaces the white flash with a smooth skeleton → content transition.
+  const [isMounted, setIsMounted] = useState(false);
+
   // Incrementing key forces grid re-mount → CSS animations reset cleanly on filter change
   const [animKey, setAnimKey] = useState(0);
 
   const filterPanelRef = useRef(null);
+
+  // Flip isMounted after first paint — skeleton shows instantly, real cards replace them
+  useEffect(() => { setIsMounted(true); }, []);
 
   // ----------------------------------------------------------------------------
   // SEARCH DEBOUNCE
@@ -196,14 +216,22 @@ export default function ProductListing({ initialProducts, initialSearch = '' }) 
   return (
     <>
       {/*
-        CSS keyframe animation — runs entirely on the GPU compositor thread.
-        No JS involvement during scroll whatsoever.
-        Stagger is applied via inline animation-delay per card (pure CSS).
+        All animations are pure CSS — compositor thread only, zero JS on scroll.
+        skeleton-shimmer: moving highlight sweep across skeleton cards.
+        knm-fadeUp: entrance animation for real product cards.
       */}
       <style>{`
+        @keyframes knm-shimmer {
+          0%   { transform: translateX(-100%); }
+          100% { transform: translateX(100%);  }
+        }
         @keyframes knm-fadeUp {
           from { opacity: 0; transform: translateY(14px); }
           to   { opacity: 1; transform: translateY(0);   }
+        }
+        .skeleton-shimmer {
+          background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.7) 50%, transparent 100%);
+          animation: knm-shimmer 1.6s ease-in-out infinite;
         }
         .product-item {
           animation: knm-fadeUp 0.32s ease-out both;
@@ -382,46 +410,56 @@ export default function ProductListing({ initialProducts, initialSearch = '' }) 
         {/* PRODUCT GRID                                                         */}
         {/* ------------------------------------------------------------------ */}
         <div className="max-w-[1920px] mx-auto px-3 md:px-8 pt-12 min-h-[60vh]">
-          {processedData.length > 0 ? (
-            <div
-              key={animKey}
-              className={
-                viewMode === 'grid'
-                  ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-3 gap-y-10 md:gap-x-6 md:gap-y-14 lg:gap-x-8 lg:gap-y-20'
-                  : 'flex flex-col gap-8 max-w-5xl mx-auto'
-              }
-            >
-              {processedData.map((product, index) => (
-                <div
-                  key={product._id}
-                  className={`product-item will-change-transform ${
-                    viewMode === 'list'
-                      ? 'w-full max-w-[150px] mx-auto border-b border-[#F5F2EA] pb-8'
-                      : ''
-                  }`}
-                  style={{
-                    // CSS stagger: 12ms per card, capped at 400ms
-                    // Items far down the page don't wait unreasonably long
-                    animationDelay: `${Math.min(index * 12, 400)}ms`,
-                  }}
-                >
-                  {/* Only first 6 cards (above the fold) get priority loading */}
-                  <ProductCard product={product} priority={index < 6} />
-                </div>
+
+          {/* SKELETON — shown before JS hydrates. Prevents white flash entirely. */}
+          {!isMounted && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-3 gap-y-10 md:gap-x-6 md:gap-y-14 lg:gap-x-8 lg:gap-y-20">
+              {Array.from({ length: 10 }).map((_, i) => (
+                <ProductSkeleton key={i} />
               ))}
             </div>
-          ) : (
-            <div className="py-40 text-center">
-              <h3 className="font-heading font-normal text-2xl text-[#121212] mb-3 uppercase tracking-tight">
-                No Matches Found
-              </h3>
-              <button
-                onClick={clearFilters}
-                className="text-[10px] font-bold uppercase tracking-widest text-[#C5A059] border-b border-[#C5A059] pb-0.5 hover:text-[#121212] hover:border-[#121212] transition-all"
-              >
-                Clear All Filters
-              </button>
-            </div>
+          )}
+
+          {/* REAL CARDS — revealed after hydration with fade-up entrance */}
+          {isMounted && (
+            <>
+              {processedData.length > 0 ? (
+                <div
+                  key={animKey}
+                  className={
+                    viewMode === 'grid'
+                      ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-3 gap-y-10 md:gap-x-6 md:gap-y-14 lg:gap-x-8 lg:gap-y-20'
+                      : 'flex flex-col gap-8 max-w-5xl mx-auto'
+                  }
+                >
+                  {processedData.map((product, index) => (
+                    <div
+                      key={product._id}
+                      className={`product-item will-change-transform ${
+                        viewMode === 'list'
+                          ? 'w-full max-w-[150px] mx-auto border-b border-[#F5F2EA] pb-8'
+                          : ''
+                      }`}
+                      style={{ animationDelay: `${Math.min(index * 12, 400)}ms` }}
+                    >
+                      <ProductCard product={product} priority={index < 6} />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-40 text-center">
+                  <h3 className="font-heading font-normal text-2xl text-[#121212] mb-3 uppercase tracking-tight">
+                    No Matches Found
+                  </h3>
+                  <button
+                    onClick={clearFilters}
+                    className="text-[10px] font-bold uppercase tracking-widest text-[#C5A059] border-b border-[#C5A059] pb-0.5 hover:text-[#121212] hover:border-[#121212] transition-all"
+                  >
+                    Clear All Filters
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       </main>
