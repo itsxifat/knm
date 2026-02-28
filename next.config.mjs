@@ -8,16 +8,15 @@ const nextConfig = {
     },
   },
 
-  // IMAGE SETTINGS
   images: {
-    // Disable Next.js image optimizer completely
-    unoptimized: true,
+    // Enable Next.js image optimization (IMPORTANT)
+    unoptimized: false,
 
-    // Replaced 'domains' with 'remotePatterns' to fix deprecation warning
+    // Allow remote images if needed
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'knm.bd' ,
+        hostname: 'knm.bd',
       },
       {
         protocol: 'http',
@@ -26,15 +25,20 @@ const nextConfig = {
     ],
   },
 
-  // Important: prevent static output caching
-  headers: async () => [
-    {
-      source: '/uploads/:path*',
-      headers: [
-        { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate, max-age=0' },
-      ],
-    },
-  ],
+  // Let images cache properly (very important for performance)
+  async headers() {
+    return [
+      {
+        source: '/uploads/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
