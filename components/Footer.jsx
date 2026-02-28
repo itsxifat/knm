@@ -345,10 +345,6 @@ function AppointmentModal({ onClose }) {
         <div className="flex items-center justify-between p-6 md:p-8 border-b border-[#C5A059]/20 bg-[#0a2118] z-10 shrink-0">
           <div>
             <h3 className="font-heading text-2xl md:text-3xl text-white uppercase tracking-tight">Book Appointment</h3>
-            <div className="flex gap-6 mt-3">
-              <span className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gray-400"><MapPin size={12} className="text-[#C5A059]" /> Banani & Gulshan</span>
-              <span className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-gray-400"><Clock size={12} className="text-[#C5A059]" /> 10am - 8pm</span>
-            </div>
           </div>
           <button onClick={onClose} className="w-10 h-10 flex items-center justify-center hover:bg-white/10 transition-colors border border-white/5">
             <X size={20} className="text-[#C5A059]" />
@@ -379,8 +375,7 @@ function AppointmentModal({ onClose }) {
                 <select value={formData.store} onChange={set('store')}
                   className="peer w-full bg-transparent border-b border-white/10 py-3 text-sm text-white focus:border-[#C5A059] outline-none cursor-pointer appearance-none"
                 >
-                  <option className="bg-[#0a2118]" value="Banani Flagship">Banani Flagship</option>
-                  <option className="bg-[#0a2118]" value="Gulshan Gallery">Gulshan Gallery</option>
+                  <option className="bg-[#0a2118]" value="Baridhara DOHS, Road 03, House 245, Floor G, Dhaka">Baridhara DOHS, Road 03, House 245, Floor G, Dhaka</option>
                 </select>
               </InputGroup>
             </div>

@@ -206,7 +206,8 @@ const MobileMenu = ({ isOpen, onClose, navData, session }) => {
               <div className="flex items-center gap-4">
                 {session.user?.image ? (
                   <div className="relative w-10 h-10 rounded-full overflow-hidden border border-[#C5A059]">
-                      <Image src={session.user.image} alt="User" fill className="object-cover" sizes="40px" />
+                      {/* ✅ FIX: Replaced Next Image with standard img for external user avatars */}
+                      <img src={session.user.image} alt="User" className="w-full h-full object-cover" />
                   </div>
                 ) : (
                   <div className="w-10 h-10 bg-[#C5A059] text-white flex items-center justify-center font-heading text-sm rounded-full">
@@ -369,7 +370,6 @@ const Navbar = ({ navData }) => {
 
   return (
     <>
-      {/* NATIVE NAV: Removed motion.nav, replaced with pure CSS transition */}
       <nav 
         className={`z-[100] bg-[#F9F6F0] text-[#121212] transition-all duration-300 border-b border-[#C5A059]/20 ${
           isProductPage ? 'relative' : 'sticky top-0'
@@ -399,7 +399,7 @@ const Navbar = ({ navData }) => {
 
               <div className="hidden lg:block w-px h-5 bg-[#C5A059]/30"></div>
 
-              {/* Desktop Search (Pure CSS Expansion) */}
+              {/* Desktop Search */}
               <div className="hidden lg:flex items-center relative" ref={searchContainerRef}>
                   <div 
                     className={`flex items-center bg-white border ${searchOpen ? 'border-[#C5A059] shadow-sm w-[280px]' : 'border-transparent w-[105px]'} rounded-full px-4 py-1.5 transition-all duration-300 ease-in-out cursor-pointer overflow-hidden`}
@@ -491,7 +491,8 @@ const Navbar = ({ navData }) => {
                     <div className="flex items-center gap-2 cursor-pointer py-1 px-1 rounded-full hover:bg-[#C5A059]/10 transition group" onClick={() => setProfileOpen(!profileOpen)}>
                       {session.user?.image ? (
                         <div className="relative w-8 h-8 rounded-full overflow-hidden border border-[#C5A059]/30">
-                           <Image src={session.user.image} alt="User" fill className="object-cover" sizes="32px" />
+                           {/* ✅ FIX: Replaced Next Image with standard img for external user avatars */}
+                           <img src={session.user.image} alt="User" className="w-full h-full object-cover" />
                         </div>
                       ) : (
                         <div className="w-8 h-8 bg-[#C5A059] text-white flex items-center justify-center font-heading text-[10px] rounded-full">

@@ -65,7 +65,7 @@ export default function RecommendedClient({ products }) {
         }
       `}</style>
 
-      <section className="py-20 md:py-32 bg-[#F9F6F0] border-t border-[#C5A059]/10 font-body selection:bg-[#C5A059] selection:text-white">
+      <section className="pb-20 bg-[#F9F6F0] font-body selection:bg-[#C5A059] selection:text-white">
         <div className="max-w-[1920px] mx-auto px-4 md:px-8">
 
           {/* HEADER */}

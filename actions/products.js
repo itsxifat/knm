@@ -171,11 +171,9 @@ export async function createCategory(formData) {
     return { error: 'Failed to create category' };
   }
 }
-
 export async function getCategoryPageData(slug, searchParams = {}) {
   await connectDB();
   try {
-    // FIX: Fetch main category + all categories in parallel (was sequential)
     const [mainCategory, allCategories] = await Promise.all([
       Category.findOne({ slug }).lean(),
       Category.find().lean(),
@@ -193,19 +191,19 @@ export async function getCategoryPageData(slug, searchParams = {}) {
       if (searchParams.maxPrice) productFilter.price.$lte = Number(searchParams.maxPrice);
     }
 
-    // FIX: ONE query for all products across all subcategories instead of N queries
     const allProducts = await Product.find(productFilter)
       .select('name slug price discountPrice images stock variants category tags saleStartDate saleEndDate createdAt')
       .populate('tags', 'name color')
       .sort({ createdAt: -1 })
       .lean();
 
-    // Group by category in JS — zero extra DB round trips
+    // Group by category in JS
     const productsByCategory = {};
     for (const product of allProducts) {
       const catId = String(product.category);
       if (!productsByCategory[catId]) productsByCategory[catId] = [];
-      if (productsByCategory[catId].length < 12) productsByCategory[catId].push(product);
+      // ✅ FIX: Removed the "length < 12" check. Now it pushes ALL products.
+      productsByCategory[catId].push(product);
     }
 
     const sections = allCategories
@@ -231,7 +229,6 @@ export async function getCategoryPageData(slug, searchParams = {}) {
     return null;
   }
 }
-
 export async function getTopCategories() {
   await connectDB();
   const categories = await Category.find({ parent: null }).lean();
